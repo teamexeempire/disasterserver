@@ -14,7 +14,7 @@ namespace BetterServer.Maps
         public List<Entity> Entities = new();
         public bool BigRingSpawned = false;
         public bool BigRingReady = false;
-        public ushort RingIDs = 0;
+        public ushort RingIDs = 1;
 
         private int _ringActivateTime = (Ext.FRAMESPSEC * Ext.FRAMESPSEC) - (10 * Ext.FRAMESPSEC);
         private int _ringCoff = 3;

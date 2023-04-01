@@ -3,7 +3,6 @@ using BetterServer.Maps;
 using BetterServer.Session;
 using ExeNet;
 using System.Net;
-using System.Net.Sockets;
 
 namespace BetterServer.State
 {
@@ -168,7 +167,7 @@ namespace BetterServer.State
 
                 // Pick random map
                 _map = Ext.CreateOfType<Map>(Maps[_rand.Next(Maps.Length)]);
-                //_map = Ext.CreateOfType<Act9>();
+                //_map = Ext.CreateOfType<NotPefect>();
                 _exe.Player.Character = Character.EXE;
 
                 Logger.LogDiscord($"Map is {_map}");

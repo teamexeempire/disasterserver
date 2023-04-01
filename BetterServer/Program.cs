@@ -6,7 +6,7 @@ using System.Text.Json;
 
 public class Program
 {
-    public const int BUILD_VER = 302; 
+    public const int BUILD_VER = 303; 
     public const int MAX_PLAYERS = 7;
 
     public static Config Config { get; private set; }

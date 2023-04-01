@@ -12,7 +12,7 @@ namespace BetterServer.Entities
 {
     public class Ring : Entity
     {
-        public ushort ID = 0;
+        public ushort ID = 1;
         public byte IID = 0;
         public bool IsRedRing = false;
 
