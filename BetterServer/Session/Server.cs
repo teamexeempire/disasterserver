@@ -1,8 +1,8 @@
 ﻿using BetterServer.Data;
-using BetterServer.Maps;
 using BetterServer.State;
 using ExeNet;
 using System.Net;
+using System.Runtime.InteropServices;
 
 namespace BetterServer.Session
 {
@@ -30,19 +30,17 @@ namespace BetterServer.Session
         {
             MulticastServer = new(this, UDP_PORT + uid);
             SharedServer = new(this, TCP_PORT + uid);
-            UID = uid+1;
+            UID = uid + 1;
         }
 
         public void StartAsync()
         {
-            Logger.Log($"Starting...");
-
             if (!SharedServer.Start())
                 throw new Exception("Failed to start SharedServer (TCP)");
 
-            MulticastServer.Start();
+            if (!MulticastServer.Start())
+                throw new Exception("Failed to start MulticastServer (UCP)");
 
-            Logger.Log("Server is running");
             IsRunning = true;
 
             _thread = new Thread(() =>
@@ -75,7 +73,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Logger.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"Exception: {e}");
                 return false;
             }
         }
@@ -112,7 +110,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Logger.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"Exception: {e}");
                 return false;
             }
         }
@@ -124,11 +122,6 @@ namespace BetterServer.Session
                 var arr = packet.ToArray();
                 var sent = MulticastServer.Send(IPEndPoint, arr, packet.Length);
 
-                if (sent == -1)
-                {
-                    
-                }
-
                 return sent >= 0;
             }
             catch (InvalidOperationException)
@@ -137,7 +130,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Logger.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"Exception: {e}");
                 return false;
             }
         }
@@ -170,7 +163,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Logger.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"Exception: {e}");
                 return false;
             }
 
@@ -205,7 +198,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Logger.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"Exception: {e}");
                 return false;
             }
 
@@ -214,7 +207,7 @@ namespace BetterServer.Session
 
         public void Passtrough(BinaryReader reader, TcpSession sender)
         {
-            Logger.LogDebug("Passtrough()");
+            Terminal.LogDebug("Passtrough()");
             // remember pos
             var pos = reader.BaseStream.Position;
             reader.BaseStream.Seek(0, SeekOrigin.Begin);
@@ -233,7 +226,7 @@ namespace BetterServer.Session
 
             //now return back
             reader.BaseStream.Seek(pos, SeekOrigin.Begin);
-            Logger.LogDebug("Passtrough end()");
+            Terminal.LogDebug("Passtrough end()");
         }
 
         public void DisconnectWithReason(TcpSession? session, string reason)
@@ -255,13 +248,13 @@ namespace BetterServer.Session
                     {
                         if (!Peers.ContainsKey(id))
                         {
-                            Logger.LogDiscord($"(ID {id}) disconnect: {reason}");
+                            Terminal.LogDiscord($"(ID {id}) disconnect: {reason}");
                         }
                         else
                         {
 
                             var peer = Peers[id];
-                            Logger.LogDiscord($"{peer.Nickname} (ID {peer.ID}) disconnect: {reason}");
+                            Terminal.LogDiscord($"{peer.Nickname} (ID {peer.ID}) disconnect: {reason}");
                         }
                     }
 
@@ -270,7 +263,7 @@ namespace BetterServer.Session
                     TCPSend(session, pk);
                     session.Disconnect();
                 }
-                catch { }
+                catch (Exception e) { Terminal.LogDiscord(e.Message); }
             });
         }
 
@@ -284,7 +277,7 @@ namespace BetterServer.Session
             State = (BetterServer.State.State)obj;
             State.Init(this);
 
-            Logger.LogDiscord($"Server state is {State} now");
+            Terminal.LogDiscord($"Server state is {State} now");
         }
 
         public void SetState<T>(T value) where T : BetterServer.State.State
@@ -292,7 +285,7 @@ namespace BetterServer.Session
             State = value;
             State.Init(this);
 
-            Logger.LogDiscord($"Server state is {State} now");
+            Terminal.LogDiscord($"Server state is {State} now");
         }
 
         private void DoHeartbeat()
@@ -309,7 +302,7 @@ namespace BetterServer.Session
             var pk = new TcpPacket(PacketType.SERVER_HEARTBEAT);
             TCPMulticast(pk);
 
-            Logger.LogDebug("Server heartbeated.");
+            Terminal.LogDebug("Server heartbeated.");
             _hbTimer = 0;
         }
     }

@@ -8,7 +8,7 @@ namespace BetterServer.Data
 {
     public class Player
     {
-        public Character Character = Character.NONE;
+        public Character Character = Character.None;
         public int RevivalTimes = 0;
         public int DeadTimer = -1;
         public bool DiedBefore = false;

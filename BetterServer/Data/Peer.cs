@@ -6,6 +6,7 @@ namespace BetterServer.Data
     {
         public ushort ID = 0;
         public string Nickname = "Pending...";
+        public int ExeChance = 0;
 
         public bool Pending = true;
 

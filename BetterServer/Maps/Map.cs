@@ -15,19 +15,26 @@ namespace BetterServer.Maps
         public bool BigRingSpawned = false;
         public bool BigRingReady = false;
         public ushort RingIDs = 1;
+        public ushort BRingsIDs = 1;
 
         private int _ringActivateTime = (Ext.FRAMESPSEC * Ext.FRAMESPSEC) - (10 * Ext.FRAMESPSEC);
-        private int _ringCoff = 3;
+        private int _ringCoff = 5;
         private int _ringTimer = -(Ext.FRAMESPSEC * 4);
         private Random _rand = new();
+        private bool[] _ringSpawns;
 
         public virtual void Init(Server server)
         {
             lock(server.Peers)
             {
                 if (server.Peers.Count > 3)
-                    _ringCoff = 2;
+                    _ringCoff = 4;
             }
+
+            _ringSpawns = new bool[GetRingSpawnCount()];
+
+            var pack = new TcpPacket(PacketType.SERVER_GAME_PLAYERS_READY);
+            server.TCPMulticast(pack);
         }
         
         public virtual void Tick(Server server)
@@ -73,6 +80,7 @@ namespace BetterServer.Maps
                     {
                         var projectile = new TailsProjectile
                         {
+                            OwnerID = session.ID,
                             X = reader.ReadUInt16(),
                             Y = reader.ReadUInt16(),
                             Direction = reader.ReadSByte(),
@@ -179,19 +187,71 @@ namespace BetterServer.Maps
                         }
                         break;
                     }
+
+                case PacketType.CLIENT_BRING_COLLECTED:
+                    {
+                        lock (Entities)
+                        {
+                            var uid = reader.ReadUInt16();
+
+                            var rings = FindOfType<BlackRing>();
+                            if (rings == null)
+                                break;
+
+                            var ring = rings.Where(e => e.ID == uid).FirstOrDefault();
+                            if (ring == null)
+                                break;
+
+                            var packet = new TcpPacket(PacketType.SERVER_BRING_COLLECTED);
+                            server.TCPSend(session, packet);
+
+                            Destroy(server, ring);
+                        }
+                        break;
+                    }
             }
         }
 
-        public void SetTimer(Server server, int seconds)
+        public void SetTime(Server server, int seconds)
         {
             Timer = (seconds * Ext.FRAMESPSEC) + (GetPlayerOffset(server) * Ext.FRAMESPSEC);
-            Logger.LogDebug($"Timer is set to {Timer} frames");
+            Terminal.LogDebug($"Timer is set to {Timer} frames");
         }
 
         public void ActivateRingAfter(int afterSeconds)
         {
             _ringActivateTime = (Ext.FRAMESPSEC * Ext.FRAMESPSEC) - (afterSeconds * Ext.FRAMESPSEC);
-            Logger.LogDebug($"Ring activate time is set to {Timer} frames");
+            Terminal.LogDebug($"Ring activate time is set to {Timer} frames");
+        }
+
+        public void FreeRingID(byte iid)
+        {
+            lock(_ringSpawns)
+                _ringSpawns[iid] = false;
+        }
+
+        public bool GetFreeRingID(out byte iid)
+        {
+            lock (_ringSpawns)
+            {
+                if (_ringSpawns.Where(e => !e).Count() <= 0)
+                {
+                    iid = 0;
+                    return false;
+                }
+
+                while(true)
+                {
+                    byte rn = (byte)_rand.Next(_ringSpawns.Length);
+
+                    if (_ringSpawns[rn])
+                        continue;
+
+                    _ringSpawns[rn] = true;
+                    iid = rn;
+                    return true;
+                }
+            }
         }
 
         #region Entities
@@ -213,7 +273,7 @@ namespace BetterServer.Maps
             if (pack != null)
                 server.TCPMulticast(pack);
 
-            Logger.LogDebug($"Entity {entity} spawned.");
+            Terminal.LogDebug($"Entity {entity} spawned.");
             return entity;
         }
 
@@ -229,7 +289,7 @@ namespace BetterServer.Maps
             if (pack != null)
                 server.TCPMulticast(pack);
 
-            Logger.LogDebug($"Entity {entity} spawned.");
+            Terminal.LogDebug($"Entity {entity} spawned.");
             return entity;
         }
 
@@ -245,7 +305,7 @@ namespace BetterServer.Maps
             if (pack != null)
                 server.TCPMulticast(pack);
 
-            Logger.LogDebug($"Entity {entity} destroyed.");
+            Terminal.LogDebug($"Entity {entity} destroyed.");
         }
 
         public void Destroy<T>(Server server) where T : Entity
@@ -260,7 +320,7 @@ namespace BetterServer.Maps
                 foreach (var p in pick)
                 {
                     Destroy(server, p);
-                    Logger.LogDebug($"Entity {p} destroyed.");
+                    Terminal.LogDebug($"Entity {p} destroyed.");
                 }
             }
         }
@@ -270,7 +330,7 @@ namespace BetterServer.Maps
             lock(Entities)
             {
                 var pick = Entities.Where(e => e is T).ToArray();
-                Logger.LogDebug($"Entity search found {pick.Length} entities of type {typeof(T).FullName}");
+                Terminal.LogDebug($"Entity search found {pick.Length} entities of type {typeof(T).FullName}");
                 return Array.ConvertAll(pick, e => (T)e);
             }
         }
@@ -281,8 +341,15 @@ namespace BetterServer.Maps
         {
             if(_ringTimer >= (_ringCoff * Ext.FRAMESPSEC))
             {
-                Spawn<Ring>(server);
                 _ringTimer = 0;
+
+                if (!GetFreeRingID(out byte iid))
+                    return;
+
+                Spawn(server, new Ring()
+                {
+                    IID = iid
+                });
             }
             _ringTimer++;
         }
@@ -308,10 +375,12 @@ namespace BetterServer.Maps
             }
         }
 
-        private int GetPlayerOffset(Server server)
+        protected virtual int GetPlayerOffset(Server server)
         {
             lock (server.Peers)
                 return (server.Peers.Count - 1) * 20;
         }
+
+        protected abstract int GetRingSpawnCount();
     }
 }

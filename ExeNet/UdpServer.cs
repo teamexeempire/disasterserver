@@ -20,17 +20,6 @@ namespace ExeNet
         public UdpServer(int port)
         {
             Port = port;
-            _client = new(port);
-            _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            
-            // I fucking hate microsoft please kill yourelf
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                const int SIO_UDP_CONNRESET = -1744830452;
-                byte[] inValue = new byte[] { 0 };
-                byte[] outValue = new byte[] { 0 };
-                _client.Client.IOControl(SIO_UDP_CONNRESET, inValue, outValue);
-            }
         }
 
         public void Dispose()
@@ -39,8 +28,28 @@ namespace ExeNet
             GC.SuppressFinalize(this);
         }
 
-        public void Start()
+        public bool Start()
         {
+            try
+            {
+                _client = new(Port);
+                _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            }
+            catch(Exception e)
+            {
+                OnError(null, e.Message);
+                return false;
+            }
+
+            // I fucking hate microsoft please kill yourelf
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                const int SIO_UDP_CONNRESET = -1744830452;
+                byte[] inValue = new byte[] { 0 };
+                byte[] outValue = new byte[] { 0 };
+                _client.Client.IOControl(SIO_UDP_CONNRESET, inValue, outValue);
+            }
+
             IsRunning = true;
 
             _readThread = new(Run);
@@ -48,6 +57,8 @@ namespace ExeNet
             _readThread.Start();
 
             OnReady();
+
+            return true;
         }
 
         public int Send(IPEndPoint endpoint, byte[] data) => Send(endpoint, data, data.Length);
@@ -100,7 +111,7 @@ namespace ExeNet
 
         protected virtual void OnReady() { }
         protected virtual void OnSocketError(IPEndPoint endpoint, SocketError error) { }
-        protected virtual void OnError(IPEndPoint endpoint, string message) { }
+        protected virtual void OnError(IPEndPoint? endpoint, string message) { }
         protected virtual void OnData(IPEndPoint sender, byte[] data) { }
     }
 }

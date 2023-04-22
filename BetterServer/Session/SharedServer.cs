@@ -1,13 +1,6 @@
-﻿using BetterServer.Data;
-using ExeNet;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using ExeNet;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BetterServer.Session
 {
@@ -26,7 +19,7 @@ namespace BetterServer.Session
         protected override void OnReady()
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
-            Logger.LogDiscord($" TCP port {Port}");
+            Terminal.LogDiscord($"Server started on TCP port {Port}");
 
             base.OnReady();
         }
@@ -34,7 +27,7 @@ namespace BetterServer.Session
         protected override void OnSocketError(SocketError error)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
-            Logger.LogDiscord($"Caught SocketError: {error}");
+            Terminal.LogDiscord($"Caught SocketError: {error}");
 
             base.OnSocketError(error);
         }
@@ -42,7 +35,7 @@ namespace BetterServer.Session
         protected override void OnError(string message)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
-            Logger.LogDiscord($"Caught Exception: {message}");
+            Terminal.LogDiscord($"Caught Exception: {message}");
 
             base.OnError(message);
         }

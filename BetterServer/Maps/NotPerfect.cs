@@ -3,12 +3,12 @@ using BetterServer.Session;
 
 namespace BetterServer.Maps
 {
-    public class NotPefect : Map
+    public class NotPerfect : Map
     {
         public override void Init(Server server)
         {
             Spawn<NotPerfectController>(server);
-            SetTimer(server, 155);
+            SetTime(server, 155);
 
             base.Init(server);
         }
@@ -16,6 +16,11 @@ namespace BetterServer.Maps
         public override void Tick(Server server)
         {
             base.Tick(server);
+        }
+
+        protected override int GetRingSpawnCount()
+        {
+            return 59;
         }
     }
 }

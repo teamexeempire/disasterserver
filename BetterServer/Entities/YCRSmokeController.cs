@@ -29,7 +29,7 @@ namespace BetterServer.Entities
 
         public override UdpPacket? Tick(Server server, Game game, Map map)
         {
-            if (_timer > 60 * 10)
+            if (_timer > 60 * 6)
             {
                 _timer = 0;
                 _activated = !_activated;
@@ -39,14 +39,14 @@ namespace BetterServer.Entities
                 else
                     _id = 0;
 
-                Logger.Log($"{_id}: state {_activated}");
+                Terminal.LogDebug($"{_id}: state {_activated}");
                 var packet = new TcpPacket(PacketType.SERVER_YCRSMOKE_STATE);
                 packet.Write(_activated);
                 packet.Write(_id);
                 server.TCPMulticast(packet);
             }
 
-            if (_activated && _timer == 60 * 2)
+            if (_activated && _timer == 60 * 1)
             {
                 var packet = new TcpPacket(PacketType.SERVER_YCRSMOKE_READY);
                 packet.Write(_id);

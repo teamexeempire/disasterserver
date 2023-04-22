@@ -20,6 +20,7 @@ namespace BetterServer.State
         private int _timeout = 1 * Ext.FRAMESPSEC;
 
         private Dictionary<ushort, int> _lastPackets = new();
+        private Dictionary<ushort, int> _packetTimeouts = new();
 
         public Game(Map map, ushort exe)
         {
@@ -39,10 +40,28 @@ namespace BetterServer.State
 
         public override void PeerLeft(Server server, TcpSession session, Peer peer)
         {
+            lock (IPEndPoints)
+                IPEndPoints.Remove(peer.ID);
+
+            lock (_lastPackets)
+                _lastPackets.Remove(peer.ID);
+
             lock (server.Peers)
             {
                 if (peer.Player.RevivalTimes >= 2)
                     _demonCount--;
+
+                if(!server.Peers.Any(e => (!e.Value.Player.HasEscaped && e.Value.Player.Character != Character.Exe)))
+                {
+                    EndGame(server, 1);
+                    return;
+                }
+
+                if(!server.Peers.Any(e => (e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe) && e.Value.Player.RevivalTimes < 2))
+                {
+                    EndGame(server, 0);
+                    return;
+                }
 
                 if (_exeId == peer.ID)
                 {
@@ -53,21 +72,15 @@ namespace BetterServer.State
                 if (server.Peers.Count <= 1)
                     server.SetState<Lobby>();
             }
-
-            lock (IPEndPoints)
-                IPEndPoints.Remove(peer.ID);
-
-            lock (_lastPackets)
-                _lastPackets.Remove(peer.ID);
         }
 
         public override void PeerTCPMessage(Server server, TcpSession session, BinaryReader reader)
         {
             // Actual handlin
-            Logger.LogDebug("HandlePlayers()");
+            Terminal.LogDebug("HandlePlayers()");
             HandlePlayers(server, session, reader);
 
-            Logger.LogDebug("HandleMap()");
+            Terminal.LogDebug("HandleMap()");
             reader.BaseStream.Seek(0, SeekOrigin.Begin);
             _map.PeerTCPMessage(server, session, reader);
         }
@@ -79,45 +92,23 @@ namespace BetterServer.State
             {
                 if (reader.BaseStream.Length <= 0)
                 {
-                    Logger.LogDebug($"Length is 0 from {endpoint}");
+                    Terminal.LogDebug($"Length is 0 from {endpoint}");
                     return;
                 }
 
                 var pid = reader.ReadUInt16();
+                var type = (PacketType)reader.ReadByte();
 
-                // Waiting for packets from all players
-                if (_waiting)
+                if (!_waiting)
                 {
-                    lock (IPEndPoints)
-                    {
-                        if (!IPEndPoints.ContainsKey(pid))
-                        {
-                            Logger.LogDebug($"Received from {endpoint}");
-                            IPEndPoints.Add(pid, endpoint);
-                        }
+                    var pack = new UdpPacket(type);
+                    while (reader.BaseStream.Position < reader.BaseStream.Length)
+                        pack.Write(reader.ReadByte());
 
-                        lock (server.Peers)
-                        {
-                            if (IPEndPoints.Count >= server.Peers.Count)
-                            {
-                                _map.Init(server);
-
-                                Logger.LogDiscord("Got packets from all players.");
-                                _waiting = false;
-                            }
-                        }
-                    }
-                    return;
+                    server.UDPMulticast(ref IPEndPoints, pack, endpoint);
                 }
 
-                var type = (PacketType)reader.ReadByte();
-                var pack = new UdpPacket(type);
-                while (reader.BaseStream.Position < reader.BaseStream.Length)
-                    pack.Write(reader.ReadByte());
-
-                server.UDPMulticast(ref IPEndPoints, pack, endpoint);
                 reader.BaseStream.Position = 3;
-
                 _lastPackets[pid] = 0;
                 switch (type)
                 {
@@ -128,10 +119,38 @@ namespace BetterServer.State
                             return;
                         }
                 }
+
+                // Waiting for packets from all players
+                if (_waiting)
+                {
+                    lock (IPEndPoints)
+                    {
+                        if (!IPEndPoints.ContainsKey(pid))
+                        {
+                            Terminal.LogDebug($"Received from {endpoint}");
+                            IPEndPoints.Add(pid, endpoint);
+
+                            lock(_packetTimeouts)
+                                _packetTimeouts[pid] = -1;
+                        }
+
+                        lock (server.Peers)
+                        {
+                            if (IPEndPoints.Count >= server.Peers.Count)
+                            {
+                                _map.Init(server);
+
+                                Terminal.LogDiscord("Got packets from all players.");
+                                _waiting = false;
+                            }
+                        }
+                    }
+                    return;
+                }
             }
             catch (Exception e)
             {
-                Logger.LogDebug($"Exception from {endpoint} UDP: {e}");
+                Terminal.LogDebug($"Exception from {endpoint} UDP: {e}");
             }
         }
 
@@ -154,13 +173,16 @@ namespace BetterServer.State
                 {
                     lock (_lastPackets)
                         _lastPackets.Add(peer.ID, 0);
+
+                    lock (_packetTimeouts)
+                        _packetTimeouts.Add(peer.ID, 18 * Ext.FRAMESPSEC);
                 }
             }
 
             var packet = new TcpPacket(PacketType.SERVER_LOBBY_GAME_START);
             server.TCPMulticast(packet);
 
-            Logger.LogDiscord("Waiting for players...");
+            Terminal.LogDiscord("Waiting for players...");
         }
 
         public override void Tick(Server server)
@@ -178,7 +200,20 @@ namespace BetterServer.State
             }
 
             if (_waiting)
+            {
+                lock(_packetTimeouts)
+                {
+                    foreach(var pair in _packetTimeouts)
+                    {
+                        if (pair.Value == -1)
+                            continue;
+
+                        if (_packetTimeouts[pair.Key]-- <= 0)
+                            server.DisconnectWithReason(server.GetSession(pair.Key), "UDP packets didnt arive in time");
+                    }
+                }
                 return;
+            }
 
             DoTimeout(server);
             UpdateDeathTimers(server);
@@ -246,7 +281,7 @@ namespace BetterServer.State
 
                             if (!peer.Player.IsAlive)
                             {
-                                Logger.LogDiscord($"{peer.Nickname} died.");
+                                Terminal.LogDiscord($"{peer.Nickname} died.");
 
                                 if (peer.Player.DiedBefore || _map.Timer <= Ext.FRAMESPSEC * Ext.FRAMESPSEC * 2)
                                 {
@@ -259,7 +294,7 @@ namespace BetterServer.State
                                         peer.Player.RevivalTimes = 2;
                                         _demonCount++;
 
-                                        Logger.LogDiscord($"{peer.Nickname} was demonized!");
+                                        Terminal.LogDiscord($"{peer.Nickname} was demonized!");
 
                                         pkt.Write(1);
                                     }
@@ -300,7 +335,7 @@ namespace BetterServer.State
                             server.TCPMulticast(pk);
                             CheckEscapedAndAlive(server, peer);
 
-                            Logger.LogDiscord($"{peer.Nickname} has escaped!");
+                            Terminal.LogDiscord($"{peer.Nickname} has escaped!");
                         }
                         break;
                     }
@@ -342,7 +377,7 @@ namespace BetterServer.State
                             _demonCount++;
                             peer.Player.RevivalTimes = 2;
 
-                            Logger.LogDiscord($"{peer.Nickname} was demonized!");
+                            Terminal.LogDiscord($"{peer.Nickname} was demonized!");
                             pkt.Write(1);
                         }
 
@@ -404,7 +439,7 @@ namespace BetterServer.State
             }
         }
 
-        private void EndGame(Server server, int type)
+        public void EndGame(Server server, int type)
         {
             if (_endTimer >= 0)
                 return;
@@ -413,7 +448,7 @@ namespace BetterServer.State
             {
                 _endTimer = 5 * Ext.FRAMESPSEC;
 
-                Logger.LogDiscord($"Exe wins!");
+                Terminal.LogDiscord($"Exe wins!");
                 var pk = new TcpPacket(PacketType.SERVER_GAME_EXE_WINS);
                 server.TCPMulticast(pk);
             }
@@ -421,7 +456,7 @@ namespace BetterServer.State
             {
                 _endTimer = 5 * Ext.FRAMESPSEC;
 
-                Logger.LogDiscord($"Survivors win!");
+                Terminal.LogDiscord($"Survivors win!");
                 var pk = new TcpPacket(PacketType.SERVER_GAME_SURVIVOR_WIN);
                 server.TCPMulticast(pk);
             }
@@ -429,7 +464,7 @@ namespace BetterServer.State
             {
                 _endTimer = 5 * Ext.FRAMESPSEC;
 
-                Logger.LogDiscord($"Time over!");
+                Terminal.LogDiscord($"Time over!");
                 var pk = new TcpPacket(PacketType.SERVER_GAME_TIME_OVER);
                 server.TCPMulticast(pk);
 

@@ -13,6 +13,7 @@ namespace BetterServer.State
         private int _countdown = 5 * Ext.FRAMESPSEC;
         private int _timeout = 1 * Ext.FRAMESPSEC;
         private Mutex _lock = new();
+        private Random _rand = new();
 
         private Dictionary<ushort, int> _lastPackets = new();
 
@@ -40,6 +41,11 @@ namespace BetterServer.State
 
             lock (_lastPackets)
                 _lastPackets.Add(peer.ID, 0);
+
+            peer.ExeChance = _rand.Next(2, 5);
+
+            var packet = new TcpPacket(PacketType.SERVER_LOBBY_EXE_CHANCE, (byte)peer.ExeChance);
+            server.TCPSend(session, packet);
         }
 
         public override void PeerLeft(Server server, TcpSession session, Peer peer)
@@ -64,7 +70,7 @@ namespace BetterServer.State
                 lock (_lastPackets)
                     _lastPackets.Remove(peer.ID);
 
-                Logger.LogDiscord($"{peer.Nickname} (ID {peer.ID}) left.");
+                Terminal.LogDiscord($"{peer.Nickname} (ID {peer.ID}) left.");
             }
         }
 
@@ -94,7 +100,7 @@ namespace BetterServer.State
                                 if (player.Key == session.ID)
                                     continue;
 
-                                Logger.Log($"Sending {player.Value.Nickname}'s data.");
+                                Terminal.Log($"Sending {player.Value.Nickname}'s data.");
 
                                 var pk = new TcpPacket(PacketType.SERVER_LOBBY_PLAYER);
                                 pk.Write(player.Value.ID);
@@ -126,7 +132,7 @@ namespace BetterServer.State
                                 server.Peers[session.ID].Pending = false;
                                 server.Peers[session.ID].Nickname = name;
 
-                                Logger.LogDiscord($"{name} (ID {server.Peers[session.ID].ID}) joined.");
+                                Terminal.LogDiscord($"{name} (ID {server.Peers[session.ID].ID}) joined.");
                                 packet.Write(server.Peers[session.ID].ID);
                                 packet.Write(name);
                             }
@@ -148,7 +154,7 @@ namespace BetterServer.State
                                 if (peer.ID != id)
                                     continue;
 
-                                Logger.LogDiscord($"[{peer.Nickname}]: {msg}");
+                                Terminal.LogDiscord($"[{peer.Nickname}]: {msg}");
                             }
                         }
                         break;
@@ -186,14 +192,23 @@ namespace BetterServer.State
 
         public override void Init(Server server)
         {
-            lock(server.Peers)
+            lock (server.Peers)
             {
                 foreach (var peer in server.Peers.Values)
                 {
                     lock (_lastPackets)
                         _lastPackets.Add(peer.ID, 0);
+
+                    peer.Player = new();
+
+                    if (peer.ExeChance >= 99)
+                        peer.ExeChance = 99;
+
+                    var packet = new TcpPacket(PacketType.SERVER_LOBBY_EXE_CHANCE, (byte)peer.ExeChance);
+                    server.TCPSend(server.GetSession(peer.ID), packet);
                 }
             }
+
             var pk = new TcpPacket(PacketType.SERVER_GAME_BACK_TO_LOBBY);
             server.TCPMulticast(pk);
         }
@@ -209,7 +224,7 @@ namespace BetterServer.State
 
                     if (_countdown <= 0)
                     {
-                        server.SetState<CharacterSelect>();
+                        server.SetState<MapVote>();
                     }
                     else
                     {

@@ -21,7 +21,6 @@ namespace BetterServer.Entities
         public override TcpPacket? Spawn(Server server, Game game, Map map)
         {
             ID = map.RingIDs++;
-            IID = (byte)_rand.Next(255);
             IsRedRing = _rand.Next(100) <= 10;
 
             return new TcpPacket
@@ -37,6 +36,8 @@ namespace BetterServer.Entities
 
         public override TcpPacket? Destroy(Server server, Game game, Map map)
         {
+            map.FreeRingID(IID);
+
             return new TcpPacket
             (
                 PacketType.SERVER_RING_STATE,

@@ -14,7 +14,7 @@ namespace BetterServer.Maps
         {
             Spawn<MovingSpikeController>(server);
             Spawn<YCRSmokeController>(server);
-            SetTimer(server, 180);
+            SetTime(server, 205);
 
             base.Init(server);
         }
@@ -22,6 +22,11 @@ namespace BetterServer.Maps
         public override void Tick(Server server)
         {
             base.Tick(server);
+        }
+
+        protected override int GetRingSpawnCount()
+        {
+            return 27;
         }
     }
 }

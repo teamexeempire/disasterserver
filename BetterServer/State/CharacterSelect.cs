@@ -8,26 +8,14 @@ namespace BetterServer.State
 {
     internal class CharacterSelect : State
     {
-        private Random _rand = new Random();
+        private Random _rand = new();
         private int _timeout = 0;
-        
+
         private Peer _exe;
         private Map _map;
         private Dictionary<ushort, int> _lastPackets = new();
 
-        /* List of possible maps */
-        private readonly Type[] Maps = new Type[]
-        {
-            typeof(HideAndSeek2),
-            typeof(RavineMist),
-            typeof(DotDotDot),
-            typeof(DesertTown),
-            typeof(YouCantRun),
-            typeof(LimpCity),
-            typeof(NotPefect),
-            typeof(KindAndFair),
-            typeof(Act9)
-        };
+        public CharacterSelect(Map map) => _map = map;
 
         public override Session.State AsState()
         {
@@ -40,7 +28,7 @@ namespace BetterServer.State
 
         public override void PeerLeft(Server server, TcpSession session, Peer peer)
         {
-            lock(server.Peers)
+            lock (server.Peers)
             {
                 if (server.Peers.Count <= 1 || _exe == peer)
                 {
@@ -50,14 +38,14 @@ namespace BetterServer.State
 
                 var cnt = 0;
                 foreach (var pr in server.Peers.Values)
-                    if (pr.Player.Character != Character.NONE)
+                    if (pr.Player.Character != Character.None)
                         cnt++;
 
-                if(cnt >= server.Peers.Count)
+                if (cnt >= server.Peers.Count)
                     server.SetState(new Game(_map, _exe.ID));
             }
 
-            lock(_lastPackets)
+            lock (_lastPackets)
                 _lastPackets.Remove(peer.ID);
         }
 
@@ -82,16 +70,15 @@ namespace BetterServer.State
 
                         lock (server.Peers)
                         {
-                            if (server.Peers[session.ID].Player.Character != Character.NONE)
+                            if (server.Peers[session.ID].Player.Character != Character.None)
                                 break;
 
-                            Logger.Log($"{id}");
                             foreach (var peer in server.Peers.Values)
                             {
                                 if (peer.Player.Character == (Character)id)
                                     canUse = false;
 
-                                if (peer.Player.Character != Character.NONE)
+                                if (peer.Player.Character != Character.None)
                                     cnt++;
                             }
 
@@ -111,7 +98,7 @@ namespace BetterServer.State
                                 packet.Write(id);
                                 server.TCPMulticast(packet, session.ID);
 
-                                Logger.LogDiscord($"{peer.Nickname} chooses {(Character)id}");
+                                Terminal.LogDiscord($"{peer.Nickname} chooses {(Character)id}");
 
                                 if (++cnt >= server.Peers.Count)
                                     server.SetState(new Game(_map, _exe.ID));
@@ -127,7 +114,7 @@ namespace BetterServer.State
                     }
             }
         }
-        
+
         public override void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, BinaryReader reader)
         {
         }
@@ -136,19 +123,12 @@ namespace BetterServer.State
         {
             lock (server.Peers)
             {
-                foreach (var peer in server.Peers.Values)
-                {
-                    lock (_lastPackets)
-                        _lastPackets.Add(peer.ID, 0);
-                }
-
                 if (server.Peers.Count <= 1)
                     server.SetState<Lobby>();
 
-                var exe = _rand.Next(server.Peers.Count);
                 var ind = 0;
 
-                foreach(var peer in server.Peers.Values)
+                foreach (var peer in server.Peers.Values)
                 {
                     if (peer.Pending)
                     {
@@ -156,27 +136,60 @@ namespace BetterServer.State
                         continue;
                     }
 
+                    lock (_lastPackets)
+                        _lastPackets.Add(peer.ID, 0);
+
                     /* Reset player information */
                     peer.Player = new();
-
-                    if (exe == ind)
-                        _exe = peer;
 
                     ind++;
                 }
 
                 // Pick random map
-                _map = Ext.CreateOfType<Map>(Maps[_rand.Next(Maps.Length)]);
-                //_map = Ext.CreateOfType<NotPefect>();
-                _exe.Player.Character = Character.EXE;
+                _exe = ChooseExe(server) ?? server.Peers[0]; // never will be null
+                _exe.Player.Character = Character.Exe; 
+                _exe.ExeChance = 0; // reset chance
 
-                Logger.LogDiscord($"Map is {_map}");
+                foreach (var peer in server.Peers.Values)
+                {
+                    if (peer.Player.Character != Character.Exe)
+                        peer.ExeChance += _rand.Next(4, 10);
+                    else
+                        peer.ExeChance += _rand.Next(0, 2);
+                }
+
+                Terminal.LogDiscord($"Map is {_map}");
 
                 var packet = new TcpPacket(PacketType.SERVER_LOBBY_EXE);
                 packet.Write((ushort)_exe.ID);
-                packet.Write((ushort)Array.IndexOf(Maps, _map?.GetType()));
+                packet.Write((ushort)Array.IndexOf(MapVote.Maps, _map?.GetType()));
                 server.TCPMulticast(packet);
             }
+        }
+
+        private Peer? ChooseExe(Server server)
+        {
+            Dictionary<ushort, double> chances = new();
+            double accWeight = 0;
+
+            lock (server.Peers)
+            {
+                foreach (var peer in server.Peers.Values)
+                {
+                    accWeight += peer.ExeChance;
+                    chances.Add(peer.ID, accWeight);
+                }
+
+                double r = _rand.NextDouble() * accWeight;
+                foreach (var chance in chances)
+                {
+                    if (chance.Value >= r)
+                        return server.Peers.Values.FirstOrDefault(e => e.ID == chance.Key);
+                }
+            }
+
+            // Will never happen
+            return null;
         }
 
         public override void Tick(Server server)
@@ -195,7 +208,7 @@ namespace BetterServer.State
                 {
                     lock (_lastPackets)
                     {
-                        if (peer.Player.Character != Character.NONE)
+                        if (peer.Player.Character != Character.None)
                         {
                             _lastPackets[peer.ID] = 0;
                             continue;

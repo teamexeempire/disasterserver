@@ -28,7 +28,7 @@ namespace BetterServer.Maps
             foreach (var coord in SpawnPoints)
                 Spawn(server, new RMZSlimeSpawner(coord.X, coord.Y));
 
-            SetTimer(server, 180);
+            SetTime(server, 180);
             base.Init(server);
         }
 
@@ -52,7 +52,7 @@ namespace BetterServer.Maps
                             var pid = reader.ReadUInt16();
                             var isProj = reader.ReadBoolean();
 
-                            Logger.Log($"Killing slime {id}");
+                            Terminal.Log($"Killing slime {id}");
 
                             var slimes = FindOfType<RMZSlimeSpawner>();
                             if (slimes == null)
@@ -70,13 +70,18 @@ namespace BetterServer.Maps
                                 break;
 
                             slime.KillSlime(server, this, killer, isProj);
-                            Logger.Log($"Killed slime {id}");
+                            Terminal.Log($"Killed slime {id}");
                             break;
                         }
                     }
             }
 
             base.PeerTCPMessage(server, session, reader);
+        }
+
+        protected override int GetRingSpawnCount()
+        {
+            return 24;
         }
     }
 }

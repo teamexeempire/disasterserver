@@ -50,6 +50,7 @@ namespace BetterServer.Session
                     ID = ID
                 };
                 _server.Peers.Add(ID, peer);
+                _server.State.PeerJoined(_server, this, peer);
 
                 var packet = new TcpPacket(PacketType.SERVER_PLAYER_JOINED, peer.ID);
                 _server.TCPMulticast(packet, ID);
@@ -57,8 +58,7 @@ namespace BetterServer.Session
                 packet = new TcpPacket(PacketType.SERVER_REQUEST_INFO, peer.ID);
                 _server.TCPSend(this, packet);
 
-                _server.State.PeerJoined(_server, this, peer);
-                Logger.Log($"{RemoteEndPoint} (ID {ID}) connected.");
+                Terminal.Log($"{RemoteEndPoint} (ID {ID}) connected.");
             }
 
             base.OnConnected();
@@ -79,7 +79,7 @@ namespace BetterServer.Session
                 _server.TCPMulticast(packet, ID);
 
                 _server.State.PeerLeft(_server, this, peer);
-                Logger.Log($"{peer?.EndPoint} (ID {peer?.ID}) disconnected.");
+                Terminal.Log($"{peer?.EndPoint} (ID {peer?.ID}) disconnected.");
             }
 
             base.OnDisconnected();
@@ -115,7 +115,7 @@ namespace BetterServer.Session
                         _length = bt;
                         _data.Clear();
 
-                        Logger.LogDebug($"Packet start {_length}");
+                        Terminal.LogDebug($"Packet start {_length}");
                     }
                     else
                     {
@@ -127,9 +127,13 @@ namespace BetterServer.Session
                             using var stream = new MemoryStream(data);
                             using var reader = new BinaryReader(stream);
 
-                            Logger.LogDebug($"Packet recv {BitConverter.ToString(data)}");
-                            _server.State.PeerTCPMessage(_server, this, reader);
+                            Terminal.LogDebug($"Packet recv {BitConverter.ToString(data)}");
 
+                            try
+                            {
+                                _server.State.PeerTCPMessage(_server, this, reader);
+                            }
+                            catch { }
                             _length = -1;
                             _data.Clear();
                         }
@@ -145,7 +149,7 @@ namespace BetterServer.Session
                 }
 
                 if(_data.Count < _length && _length != -1)
-                    Logger.LogDebug($"Packet split, waiting for part to arrive.");
+                    Terminal.LogDebug($"Packet split, waiting for part to arrive.");
             }
         }
 
@@ -160,7 +164,7 @@ namespace BetterServer.Session
         protected override void OnError(string message)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
-            Logger.LogDiscord($"Caught SocketError: {message}");
+            Terminal.LogDiscord($"Caught SocketError: {message}");
 
             base.OnError(message);
         }

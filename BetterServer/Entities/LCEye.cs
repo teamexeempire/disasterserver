@@ -19,7 +19,6 @@ namespace BetterServer.Entities
 
         private int _cooldown = 0;
         private int _timer = 0;
-        private bool _prevUsed = false;
 
         public override TcpPacket? Spawn(Server server, Game game, Map map)
         {
@@ -38,9 +37,6 @@ namespace BetterServer.Entities
                 _cooldown--;
                 return null;
             }
-
-            if (Used != _prevUsed)
-                _prevUsed = Used;
 
             if (_timer++ >= 60)
             {

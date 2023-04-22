@@ -21,6 +21,9 @@ namespace BetterServer.Data
         [JsonPropertyName("EnableStat")]
         public bool EnableStat { get; set; } = false;
 
+        [JsonPropertyName("EnableInput")]
+        public bool EnableInput { get; set; } = true;
+
         [JsonPropertyName("BannedIPs")]
         public string[] BannedIPs { get; set; }
     }

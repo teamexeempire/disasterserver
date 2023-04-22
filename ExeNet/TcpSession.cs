@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using System.Runtime;
 
 namespace ExeNet
 {
@@ -12,7 +13,6 @@ namespace ExeNet
 
         public bool IsReading { get; private set; }
         public int ReadBufferSize { get; private set; } = 96;
-        public int WriteBufferSize { get; private set; } = 96;
         public EndPoint? RemoteEndPoint
         {
             get
@@ -50,7 +50,8 @@ namespace ExeNet
             ID = server.RequestID();
 
             // Client setup
-            Client.SendTimeout = 6000;
+            Client.SendTimeout = 3000;
+            Client.ReceiveTimeout = 2000;
             Client.NoDelay = true;
         }
 
@@ -139,23 +140,26 @@ namespace ExeNet
         {
             IsReading = false;
 
-            if (Client.Connected)
-                Client.Close();
-
             if (_readThread == null)
                 return;
 
             if (Environment.CurrentManagedThreadId == _readThread.ManagedThreadId)
+            {
+                ThreadPool.QueueUserWorkItem((ass) => Stop());
                 return;
+            }
 
             try
             {
-                _readThread.Join();
+                _readThread.Join(3000);
             }
             catch (Exception ex)
             {
                 OnError(ex.Message);
             }
+
+            if (Client.Connected)
+                Client.Close();
         }
 
         private void Run()
@@ -181,7 +185,7 @@ namespace ExeNet
                         switch (error)
                         {
                             // Ignore
-                            case SocketError.Success:
+                            case SocketError.TimedOut:
                                 break;
 
                             case SocketError.Shutdown:
@@ -192,21 +196,24 @@ namespace ExeNet
                                 IsReading = false;
                                 break;
 
-                            case SocketError.TimedOut:
-                                if (IsReading && Client.Connected)
-                                    Timeouted();
-                                break;
-
                             default:
+                                if (length <= 0)
+                                {
+                                    IsReading = false;
+                                    break;
+                                }
+
                                 OnSocketError(error);
                                 IsReading = false;
                                 break;
-                        }
 
-                        if (length <= 0)
-                        {
-                            IsReading = false;
-                            break;
+                            case SocketError.Success:
+                                if (length <= 0)
+                                {
+                                    IsReading = false;
+                                    break;
+                                }
+                                break;
                         }
                     }
                     catch (SocketException ex)
@@ -221,6 +228,7 @@ namespace ExeNet
                     {
                         if (IsReading && Client.Connected)
                             OnError(ex.Message);
+
                         IsReading = false;
                         break;
                     }
@@ -228,7 +236,10 @@ namespace ExeNet
                     OnData(_readBuffer, length);
                 }
             }
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException) 
+            {
+
+            }
 
             OnDisconnected();
 

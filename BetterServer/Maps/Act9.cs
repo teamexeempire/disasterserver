@@ -7,8 +7,7 @@ namespace BetterServer.Maps
     {
         public override void Init(Server server)
         {
-            SetTimer(server, 130); //130
-            ActivateRingAfter(20);
+            SetTime(server, 130);
 
             Spawn(server, new Act9Wall(0, 0, 1025));
             Spawn(server, new Act9Wall(1, 1663, 0));
@@ -20,6 +19,17 @@ namespace BetterServer.Maps
         public override void Tick(Server server)
         {
             base.Tick(server);
+        }
+
+        protected override int GetPlayerOffset(Server server)
+        {
+            lock (server.Peers)
+                return (server.Peers.Count - 1) * 10;
+        }
+
+        protected override int GetRingSpawnCount()
+        {
+            return 38;
         }
     }
 }

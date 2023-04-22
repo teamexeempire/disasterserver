@@ -8,14 +8,14 @@ namespace BetterServer.Data
 {
     public enum Character : int
     {
-        NONE = -1,
+        None = -1,
 
-        EXE = 0,
-        TAILS = 1,
-        KNUCKLES = TAILS + 1,
-        EGGMAN = TAILS + 2,
-        AMY = TAILS + 3,
-        CREAM = TAILS + 4,
-        SALLY = TAILS + 5,
+        Exe = 0,
+        Tails = 1,
+        Knuckles = Tails + 1,
+        Eggman = Tails + 2,
+        Amy = Tails + 3,
+        Cream = Tails + 4,
+        Sally = Tails + 5,
     }
 }

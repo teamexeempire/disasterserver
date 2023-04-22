@@ -21,7 +21,7 @@ namespace BetterServer.Maps
                 });
             }
 
-            SetTimer(server, 180);
+            SetTime(server, 180);
             base.Init(server);
         }
 
@@ -59,6 +59,11 @@ namespace BetterServer.Maps
             }
 
             base.PeerTCPMessage(server, session, reader);
+        }
+
+        protected override int GetRingSpawnCount()
+        {
+            return 31;
         }
     }
 }

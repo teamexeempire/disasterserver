@@ -11,6 +11,7 @@ namespace BetterServer.Entities
 {
     internal class TailsProjectile : Entity
     {
+        public ushort OwnerID;
         public sbyte Direction;
         public bool IsExe;
         public byte Charge;
@@ -27,6 +28,7 @@ namespace BetterServer.Entities
                 (byte)0, // Spawn
                 (ushort)X,
                 (ushort)Y,
+                (ushort)OwnerID,
                 Direction,
                 Damage,
                 IsExe,
@@ -58,6 +60,7 @@ namespace BetterServer.Entities
                 (byte)1, // Update
                 (ushort)X,
                 (ushort)Y,
+                (ushort)OwnerID,
                 Direction,
                 Damage,
                 IsExe,

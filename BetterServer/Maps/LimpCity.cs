@@ -8,10 +8,10 @@ namespace BetterServer.Maps
     {
         public override void Init(Server server)
         {
+            SetTime(server, 155);
             Spawn(server, new LCEye() { ID = 0 });
             Spawn(server, new LCEye() { ID = 1 });
             Spawn<LCChainController>(server);
-            SetTimer(server, 155);
             
             base.Init(server);
         }
@@ -52,9 +52,7 @@ namespace BetterServer.Maps
                                 if (eye.Charge < 20)
                                     break;
 
-                                lock (server.Peers)
-                                    eye.UseID = server.Peers[session.ID].ID;
-
+                                eye.UseID = session.ID;
                                 eye.Target = target;
                                 eye.Used = true;
                                 eye.SendState(server);
@@ -62,7 +60,6 @@ namespace BetterServer.Maps
                             else
                             {
                                 eye.Used = false;
-                                eye.UseID = 0;
                                 eye.SendState(server);
                             }
                         }
@@ -71,6 +68,11 @@ namespace BetterServer.Maps
             }
 
             base.PeerTCPMessage(server, session, reader);
+        }
+
+        protected override int GetRingSpawnCount()
+        {
+            return 23;
         }
     }
 }

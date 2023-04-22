@@ -11,13 +11,18 @@ namespace BetterServer.Maps
     {
         public override void Init(Server server)
         {
-            SetTimer(server, 180);
+            SetTime(server, 180);
             base.Init(server);
         }
 
         public override void Tick(Server server)
         {
             base.Tick(server);
+        }
+
+        protected override int GetRingSpawnCount()
+        {
+            return 25;
         }
     }
 }
