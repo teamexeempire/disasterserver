@@ -38,8 +38,15 @@ namespace BetterServer.State
 
                 var cnt = 0;
                 foreach (var pr in server.Peers.Values)
+                {
                     if (pr.Player.Character != Character.None)
+                    {
+                        if (pr.Player.Character == Character.Exe && pr.Player.ExeCharacter == ExeCharacter.None)
+                            continue;
+
                         cnt++;
+                    }
+                }
 
                 if (cnt >= server.Peers.Count)
                     server.SetState(new Game(_map, _exe.ID));
@@ -62,6 +69,48 @@ namespace BetterServer.State
 
             switch ((PacketType)type)
             {
+                case PacketType.CLIENT_REQUEST_EXECHARACTER:
+                    {
+                        var id = reader.ReadByte() - 1;
+
+                        lock(server.Peers)
+                        {
+                            if (server.Peers[session.ID].Player.Character != Character.Exe)
+                                break;
+
+                            if (server.Peers[session.ID].Player.ExeCharacter != ExeCharacter.None)
+                                break;
+
+                            var cnt = 0;
+                            foreach (var peer in server.Peers.Values)
+                            {
+                                if (peer.Player.Character != Character.None)
+                                {
+                                    if (peer.Player.Character == Character.Exe && peer.Player.ExeCharacter == ExeCharacter.None)
+                                        continue;
+
+                                    cnt++;
+                                }
+                            }
+
+                            server.Peers[session.ID].Player.ExeCharacter = (ExeCharacter)id;
+                            Terminal.LogDiscord($"{server.Peers[session.ID].Nickname} chooses {(ExeCharacter)id}");
+
+                            var packet = new TcpPacket(PacketType.SERVER_LOBBY_EXECHARACTER_RESPONSE, id);
+                            server.TCPSend(session, packet);
+
+                            packet = new TcpPacket(PacketType.SERVER_LOBBY_CHARACTER_CHANGE);
+                            packet.Write(session.ID);
+                            packet.Write(id);
+                            server.TCPMulticast(packet, session.ID);
+
+                            if (++cnt >= server.Peers.Count)
+                                server.SetState(new Game(_map, _exe.ID));
+                        }
+
+                        break;
+                    }
+
                 case PacketType.CLIENT_REQUEST_CHARACTER:
                     {
                         var id = reader.ReadByte();
@@ -79,7 +128,12 @@ namespace BetterServer.State
                                     canUse = false;
 
                                 if (peer.Player.Character != Character.None)
+                                {
+                                    if (peer.Player.Character == Character.Exe && peer.Player.ExeCharacter == ExeCharacter.None)
+                                        continue;
+
                                     cnt++;
+                                }
                             }
 
                             if (canUse)
@@ -94,7 +148,7 @@ namespace BetterServer.State
                                 server.TCPSend(session, packet);
 
                                 packet = new TcpPacket(PacketType.SERVER_LOBBY_CHARACTER_CHANGE);
-                                packet.Write(peer.ID);
+                                packet.Write(session.ID);
                                 packet.Write(id);
                                 server.TCPMulticast(packet, session.ID);
 
@@ -123,7 +177,7 @@ namespace BetterServer.State
         {
             lock (server.Peers)
             {
-                if (server.Peers.Count <= 1)
+                if (server.Peers.Count <= 1 && _map is not FartZone)
                     server.SetState<Lobby>();
 
                 var ind = 0;
@@ -147,7 +201,7 @@ namespace BetterServer.State
 
                 // Pick random map
                 _exe = ChooseExe(server) ?? server.Peers[0]; // never will be null
-                _exe.Player.Character = Character.Exe; 
+                _exe.Player.Character = Character.Exe;
                 _exe.ExeChance = 0; // reset chance
 
                 foreach (var peer in server.Peers.Values)
@@ -174,9 +228,12 @@ namespace BetterServer.State
 
             lock (server.Peers)
             {
+                double lastWeight = 0;
                 foreach (var peer in server.Peers.Values)
                 {
                     accWeight += peer.ExeChance;
+                    lastWeight = peer.ExeChance;
+
                     chances.Add(peer.ID, accWeight);
                 }
 
@@ -186,10 +243,9 @@ namespace BetterServer.State
                     if (chance.Value >= r)
                         return server.Peers.Values.FirstOrDefault(e => e.ID == chance.Key);
                 }
-            }
 
-            // Will never happen
-            return null;
+                return server.Peers.Values.FirstOrDefault();
+            }
         }
 
         public override void Tick(Server server)
@@ -208,7 +264,13 @@ namespace BetterServer.State
                 {
                     lock (_lastPackets)
                     {
-                        if (peer.Player.Character != Character.None)
+                        if (peer.Player.Character != Character.None && peer.Player.Character != Character.Exe)
+                        {
+                            _lastPackets[peer.ID] = 0;
+                            continue;
+                        }
+
+                        if (peer.Player.Character == Character.Exe && peer.Player.ExeCharacter != ExeCharacter.None)
                         {
                             _lastPackets[peer.ID] = 0;
                             continue;

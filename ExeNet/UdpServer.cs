@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -41,7 +42,7 @@ namespace ExeNet
                 return false;
             }
 
-            // I fucking hate microsoft please kill yourelf
+            // I fucking hate microsoft please kill yourself
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 const int SIO_UDP_CONNRESET = -1744830452;
@@ -61,23 +62,10 @@ namespace ExeNet
             return true;
         }
 
-        public int Send(IPEndPoint endpoint, byte[] data) => Send(endpoint, data, data.Length);
-        public int Send(IPEndPoint endpoint, byte[] data, int length)
+        public void Send(IPEndPoint endpoint, byte[] data) => Send(endpoint, data, data.Length);
+        public void Send(IPEndPoint endpoint, byte[] data, int length)
         {
-            try
-            {
-                return _client.Send(data, length, endpoint);
-            }
-            catch(SocketException ex)
-            {
-                OnSocketError(endpoint, ex.SocketErrorCode);
-            }
-            catch(Exception ex)
-            {
-                OnError(endpoint, ex.Message);
-            }
-
-            return -1;
+            _client.BeginSend(data, length, endpoint, new AsyncCallback(DoSend), endpoint);
         }
 
         public void Stop()
@@ -88,25 +76,62 @@ namespace ExeNet
 
         private void Run()
         {
+            IPEndPoint endpoint = new(IPAddress.Any, Port);
+            _client.BeginReceive(new AsyncCallback(DoReceive), endpoint);
+
             while (IsRunning)
-            {
-                IPEndPoint endpoint = new(IPAddress.Any, Port);
-                try
-                {
-                    byte[] bytes = _client.Receive(ref endpoint);
-                    OnData(endpoint, bytes);
-                }
-                catch (SocketException ex)
-                {
-                    OnSocketError(endpoint, ex.SocketErrorCode);
-                }
-                catch(Exception ex)
-                {
-                    OnError(endpoint, ex.Message);
-                }
-            }
+                Thread.Sleep(100);
 
             _client.Close();
+        }
+
+        private void DoReceive(IAsyncResult? result)
+        {
+            if (result == null) 
+                return;
+
+            IPEndPoint? endPoint = (IPEndPoint?)result.AsyncState;
+
+            if (endPoint == null)
+                return;
+
+            try
+            {
+                byte[] bytes = _client.EndReceive(result, ref endPoint);
+                _client.BeginReceive(new AsyncCallback(DoReceive), endPoint);
+
+                OnData(endPoint, bytes);
+            }
+            catch (SocketException ex)
+            {
+                OnSocketError(endPoint, ex.SocketErrorCode);
+                _client.BeginReceive(new AsyncCallback(DoReceive), endPoint);
+            }
+            catch (Exception ex)
+            {
+                OnError(endPoint, ex.Message);
+                _client.BeginReceive(new AsyncCallback(DoReceive), endPoint);
+            }
+        }
+        private void DoSend(IAsyncResult? result)
+        {
+            IPEndPoint? endpoint = (IPEndPoint?)result.AsyncState;
+
+            if (endpoint == null)
+                return;
+
+            try
+            {
+                int cnt = _client.EndSend(result);
+            }
+            catch (SocketException ex)
+            {
+                OnSocketError(endpoint, ex.SocketErrorCode);
+            }
+            catch (Exception ex)
+            {
+                OnError(endpoint, ex.Message);
+            }
         }
 
         protected virtual void OnReady() { }

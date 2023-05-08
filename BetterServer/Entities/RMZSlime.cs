@@ -27,9 +27,9 @@ namespace BetterServer.Entities
         {
             var rng = _rand.Next(100);
 
-            if (rng < 50)
+            if (rng >= 0 && rng < 50)
                 _ring = 0;
-            else if (rng < 90)
+            else if (rng >= 40 && rng < 90)
                 _ring = 1;
             else
                 _ring = 2;

@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using System.Runtime;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ExeNet
 {
@@ -11,7 +12,7 @@ namespace ExeNet
     {
         public ushort ID;
 
-        public bool IsReading { get; private set; }
+        public bool IsRunning { get; private set; }
         public int ReadBufferSize { get; private set; } = 96;
         public EndPoint? RemoteEndPoint
         {
@@ -59,7 +60,7 @@ namespace ExeNet
         {
             _readBuffer = new byte[ReadBufferSize];
 
-            IsReading = true;
+            IsRunning = true;
             try
             {
                 _readThread = new(Run);
@@ -72,57 +73,13 @@ namespace ExeNet
             }
         }
 
-        public bool Send(byte[] data) => Send(data, data.Length);
-        public bool Send(byte[] data, int length)
+        public void Send(byte[] data) => Send(data, data.Length);
+        public void Send(byte[] data, int length)
         {
-            if (!IsReading || !Client.Connected)
-                return false;
+            if (!IsRunning || !Client.Connected)
+                return;
 
-            try
-            {
-                Client.Client.Send(data, 0, length, SocketFlags.None, out SocketError error);
-
-                switch(error)
-                {
-                    //Ignore
-                    case SocketError.Success:
-                        break;
-
-                    case SocketError.Shutdown:
-                    case SocketError.NetworkReset:
-                    case SocketError.ConnectionRefused:
-                    case SocketError.ConnectionReset:
-                    case SocketError.ConnectionAborted:
-                        IsReading = false;
-                        break;
-
-                    case SocketError.TimedOut:
-                        if (IsReading && Client.Connected)
-                            Timeouted();
-                        break;
-
-                    default:
-                        if (IsReading && Client.Connected)
-                            OnSocketError(error);
-                        break;
-                }
-
-                return (error == SocketError.Success);
-            }
-            catch (SocketException ex)
-            {
-                if (IsReading && Client.Connected)
-                    OnSocketError(ex.SocketErrorCode);
-
-                IsReading = false;
-                return false;
-            }
-            catch (Exception ex)
-            {
-                if (IsReading && Client.Connected)
-                    OnError(ex.Message);
-                return false;
-            }
+            Client.Client.BeginSend(data, 0, length, SocketFlags.None, new AsyncCallback(DoSend), null);
         }
 
         public void Disconnect()
@@ -138,7 +95,7 @@ namespace ExeNet
 
         private void Stop()
         {
-            IsReading = false;
+            IsRunning = false;
 
             if (_readThread == null)
                 return;
@@ -164,82 +121,12 @@ namespace ExeNet
 
         private void Run()
         {
-            try
-            {
-                OnConnected();
+            OnConnected();
 
-                while (IsReading)
-                {
-                    int length;
-
-                    try
-                    {
-                        if (!Client.Connected)
-                        {
-                            IsReading = false;
-                            break;
-                        }
-
-                        length = Client.Client.Receive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, out SocketError error);
-
-                        switch (error)
-                        {
-                            // Ignore
-                            case SocketError.TimedOut:
-                                break;
-
-                            case SocketError.Shutdown:
-                            case SocketError.NetworkReset:
-                            case SocketError.ConnectionRefused:
-                            case SocketError.ConnectionReset:
-                            case SocketError.ConnectionAborted:
-                                IsReading = false;
-                                break;
-
-                            default:
-                                if (length <= 0)
-                                {
-                                    IsReading = false;
-                                    break;
-                                }
-
-                                OnSocketError(error);
-                                IsReading = false;
-                                break;
-
-                            case SocketError.Success:
-                                if (length <= 0)
-                                {
-                                    IsReading = false;
-                                    break;
-                                }
-                                break;
-                        }
-                    }
-                    catch (SocketException ex)
-                    {
-                        if (IsReading && Client.Connected)
-                            OnSocketError(ex.SocketErrorCode);
-
-                        IsReading = false;
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (IsReading && Client.Connected)
-                            OnError(ex.Message);
-
-                        IsReading = false;
-                        break;
-                    }
-
-                    OnData(_readBuffer, length);
-                }
-            }
-            catch (ObjectDisposedException) 
-            {
-
-            }
+            Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
+            
+            while (IsRunning)
+                Thread.Sleep(100);
 
             OnDisconnected();
 
@@ -248,6 +135,109 @@ namespace ExeNet
                 if (Server.Sessions.Contains(this))
                     Server.Sessions.Remove(this);
             }
+        }
+
+
+        private void DoSend(IAsyncResult result)
+        {
+            try
+            {
+                int length = Client.Client.EndSend(result, out SocketError code);
+
+                switch (code)
+                {
+                    // Ignore
+                    case SocketError.TimedOut:
+                        break;
+
+                    case SocketError.Shutdown:
+                    case SocketError.NetworkReset:
+                    case SocketError.ConnectionRefused:
+                    case SocketError.ConnectionReset:
+                    case SocketError.ConnectionAborted:
+                        IsRunning = false;
+                        break;
+
+                    default:
+                        if (length <= 0)
+                        {
+                            IsRunning = false;
+                            break;
+                        }
+
+                        OnSocketError(code);
+                        IsRunning = false;
+                        break;
+
+                    case SocketError.Success:
+                        if (length <= 0)
+                        {
+                            IsRunning = false;
+                            break;
+                        }
+                        break;
+                }
+            }
+            catch(Exception e)
+            {
+                OnError(e.Message);
+            }
+        }
+
+        private void DoReceive(IAsyncResult result)
+        {
+            try
+            {
+                if (!Client.Connected)
+                {
+                    IsRunning = false;
+                    return;
+                }
+
+                int length = Client.Client.EndReceive(result, out SocketError code);
+
+                switch (code)
+                {
+                    // Ignore
+                    case SocketError.TimedOut:
+                        break;
+
+                    case SocketError.Shutdown:
+                    case SocketError.NetworkReset:
+                    case SocketError.ConnectionRefused:
+                    case SocketError.ConnectionReset:
+                    case SocketError.ConnectionAborted:
+                        IsRunning = false;
+                        return;
+
+                    default:
+                        if (length <= 0)
+                        {
+                            IsRunning = false;
+                            break;
+                        }
+
+                        OnSocketError(code);
+                        IsRunning = false;
+                        return;
+
+                    case SocketError.Success:
+                        if (length <= 0)
+                        {
+                            IsRunning = false;
+                            return;
+                        }
+                        break;
+                }
+
+                OnData(_readBuffer, length);
+            }
+            catch(Exception e)
+            {
+                OnError(e.Message);
+            }
+
+            Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
         }
 
 

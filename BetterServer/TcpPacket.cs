@@ -104,6 +104,29 @@ namespace BetterServer
             }
         }
 
+        public void Write(float value)
+        {
+            unsafe
+            {
+                byte* ptr = (byte*)&value;
+
+                if (BitConverter.IsLittleEndian)
+                {
+                    Write((byte)ptr[0]);
+                    Write((byte)ptr[1]);
+                    Write((byte)ptr[2]);
+                    Write((byte)ptr[3]);
+                }
+                else
+                {
+                    Write((byte)ptr[3]);
+                    Write((byte)ptr[2]);
+                    Write((byte)ptr[1]);
+                    Write((byte)ptr[0]);
+                }
+            }
+        }
+
         public void Write(uint value)
         {
             unsafe
@@ -180,6 +203,38 @@ namespace BetterServer
                 }
             }
         }
+
+        public void Write(double value)
+        {
+            unsafe
+            {
+                byte* ptr = (byte*)&value;
+
+                if (BitConverter.IsLittleEndian)
+                {
+                    Write((byte)ptr[0]);
+                    Write((byte)ptr[1]);
+                    Write((byte)ptr[2]);
+                    Write((byte)ptr[3]);
+                    Write((byte)ptr[4]);
+                    Write((byte)ptr[5]);
+                    Write((byte)ptr[6]);
+                    Write((byte)ptr[7]);
+                }
+                else
+                {
+                    Write((byte)ptr[7]);
+                    Write((byte)ptr[6]);
+                    Write((byte)ptr[5]);
+                    Write((byte)ptr[4]);
+                    Write((byte)ptr[3]);
+                    Write((byte)ptr[2]);
+                    Write((byte)ptr[1]);
+                    Write((byte)ptr[0]);
+                }
+            }
+        }
+
         public void Write(long value)
         {
             unsafe

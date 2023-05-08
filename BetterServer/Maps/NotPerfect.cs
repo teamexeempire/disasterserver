@@ -22,5 +22,10 @@ namespace BetterServer.Maps
         {
             return 59;
         }
+
+        protected override float GetRingTime()
+        {
+            return 3;
+        }
     }
 }

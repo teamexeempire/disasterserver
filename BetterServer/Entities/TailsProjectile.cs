@@ -21,6 +21,22 @@ namespace BetterServer.Entities
 
         public override TcpPacket? Spawn(Server server, Game game, Map map)
         {
+            // race
+            var upacket = new UdpPacket
+            (
+                PacketType.SERVER_TPROJECTILE_STATE,
+
+                (byte)1, // Update
+                (ushort)X,
+                (ushort)Y,
+                (ushort)OwnerID,
+                Direction,
+                Damage,
+                IsExe,
+                Charge
+            );
+            server.UDPMulticast(ref game.IPEndPoints, upacket);
+
             return new TcpPacket
             (
                 PacketType.SERVER_TPROJECTILE_STATE,

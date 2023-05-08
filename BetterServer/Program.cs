@@ -1,12 +1,13 @@
 ﻿using BetterServer.Data;
 using BetterServer.Session;
+using BetterServer.State;
 using System.Text.Json;
 
 namespace BetterServer
 {
     public class Program
     {
-        public const int BUILD_VER = 312;
+        public const int BUILD_VER = 319;
         public const int MAX_PLAYERS = 7;
 
         public static Config Config { get; private set; }
@@ -103,6 +104,7 @@ namespace BetterServer
                                 break;
                             }
 
+
                         case "exit":
                             searchMode = false;
                             break;
@@ -133,6 +135,24 @@ namespace BetterServer
                 {
                     case "help":
                         Console.Write("help say search kick ban quit");
+                        break;
+
+                    case "lobby":
+                        if (cmds.Length > 2)
+                        {
+                            var srv = FindServer(cmds[1]);
+
+                            if (srv == null)
+                            {
+                                Console.Write("Server with this id doesn't exist.");
+                                break;
+                            }
+
+                            srv.SetState<Lobby>();
+                            break;
+                        }
+
+                        Console.Write("say [server id] [message]");
                         break;
 
                     case "search":

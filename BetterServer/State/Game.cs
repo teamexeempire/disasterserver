@@ -5,6 +5,7 @@ using BetterServer.Session;
 using ExeNet;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 
 namespace BetterServer.State
 {
@@ -18,9 +19,11 @@ namespace BetterServer.State
         private int _endTimer = -1;
         private int _demonCount = 0;
         private int _timeout = 1 * Ext.FRAMESPSEC;
+        private bool _initMap = false;
 
         private Dictionary<ushort, int> _lastPackets = new();
         private Dictionary<ushort, int> _packetTimeouts = new();
+        private Dictionary<ushort, RevivalData> _reviveTimer = new();
 
         public Game(Map map, ushort exe)
         {
@@ -51,15 +54,15 @@ namespace BetterServer.State
                 if (peer.Player.RevivalTimes >= 2)
                     _demonCount--;
 
-                if(!server.Peers.Any(e => (!e.Value.Player.HasEscaped && e.Value.Player.Character != Character.Exe)))
+                if(!server.Peers.Any(e => e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe && e.Value.Player.RevivalTimes < 2 && !e.Value.Player.HasEscaped))
                 {
-                    EndGame(server, 1);
+                    EndGame(server, 0);
                     return;
                 }
 
-                if(!server.Peers.Any(e => (e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe) && e.Value.Player.RevivalTimes < 2))
+                if (!server.Peers.Any(e => (!e.Value.Player.HasEscaped && e.Value.Player.Character != Character.Exe)))
                 {
-                    EndGame(server, 0);
+                    EndGame(server, 1);
                     return;
                 }
 
@@ -72,6 +75,8 @@ namespace BetterServer.State
                 if (server.Peers.Count <= 1)
                     server.SetState<Lobby>();
             }
+
+            _map.PeerLeft(server, session, peer);
         }
 
         public override void PeerTCPMessage(Server server, TcpSession session, BinaryReader reader)
@@ -138,7 +143,14 @@ namespace BetterServer.State
                         {
                             if (IPEndPoints.Count >= server.Peers.Count)
                             {
-                                _map.Init(server);
+                                lock (_map)
+                                {
+                                    if (!_initMap)
+                                    {
+                                        _map.Init(server);
+                                        _initMap = true;
+                                    }
+                                }
 
                                 Terminal.LogDiscord("Got packets from all players.");
                                 _waiting = false;
@@ -147,6 +159,9 @@ namespace BetterServer.State
                     }
                     return;
                 }
+
+                reader.BaseStream.Position = 0;
+                _map.PeerUDPMessage(server, endpoint, reader);
             }
             catch (Exception e)
             {
@@ -176,6 +191,9 @@ namespace BetterServer.State
 
                     lock (_packetTimeouts)
                         _packetTimeouts.Add(peer.ID, 18 * Ext.FRAMESPSEC);
+
+                    lock (_reviveTimer)
+                        _reviveTimer.Add(peer.ID, new());
                 }
             }
 
@@ -213,6 +231,27 @@ namespace BetterServer.State
                     }
                 }
                 return;
+            }
+
+            lock(_reviveTimer)
+            {
+                foreach(var k in _reviveTimer)
+                {
+                    if (k.Value.Progress > 0)
+                    {
+                        k.Value.Progress -= 0.004;
+
+                        if (k.Value.Progress <= 0)
+                        {
+                            k.Value.DeathNote.Clear();
+
+                            server.TCPMulticast(new TcpPacket(PacketType.SERVER_REVIVAL_STATUS, false, k.Key));
+                        }
+
+                        server.UDPMulticast(ref IPEndPoints, new UdpPacket(PacketType.SERVER_REVIVAL_PROGRESS, k.Key, k.Value.Progress));
+                    }
+                    else k.Value.Progress = 0;
+                }
             }
 
             DoTimeout(server);
@@ -278,6 +317,12 @@ namespace BetterServer.State
                             // Set flags
                             peer.Player.IsAlive = !reader.ReadBoolean();
                             peer.Player.RevivalTimes = reader.ReadByte();
+                            server.TCPMulticast(new TcpPacket(PacketType.SERVER_PLAYER_DEATH_STATE, session.ID, peer.Player.IsAlive, (byte)peer.Player.RevivalTimes));
+
+                            lock (_reviveTimer)
+                                _reviveTimer[peer.ID] = new();
+
+                            server.TCPMulticast(new TcpPacket(PacketType.SERVER_REVIVAL_STATUS, false, session.ID));
 
                             if (!peer.Player.IsAlive)
                             {
@@ -339,6 +384,49 @@ namespace BetterServer.State
                         }
                         break;
                     }
+
+                case PacketType.CLIENT_REVIVAL_PROGRESS:
+                    {
+                        var rid = reader.ReadUInt16();
+                        var rings = reader.ReadByte();
+
+                        lock (server.Peers)
+                            if (server.Peers[rid].Player.IsAlive || server.Peers[rid].Player.RevivalTimes >= 2)
+                                break;
+
+                        lock (_reviveTimer)
+                        {
+                            if (_reviveTimer[rid].Progress <= 0)
+                                server.TCPMulticast(new TcpPacket(PacketType.SERVER_REVIVAL_STATUS, true, rid));
+
+                            if (!_reviveTimer[rid].DeathNote.Contains(session.ID))
+                                _reviveTimer[rid].DeathNote.Add(session.ID);
+
+                            _reviveTimer[rid].Progress += 0.016 + 0.004 * rings;
+                            if (_reviveTimer[rid].Progress > 1)
+                            {
+                                foreach (var p in _reviveTimer[rid].DeathNote)
+                                    server.TCPSend(server.GetSession(p), new TcpPacket(PacketType.SERVER_REVIVAL_RINGSUB));
+
+                                server.TCPMulticast(new TcpPacket(PacketType.SERVER_REVIVAL_STATUS, false, rid));
+                                server.TCPSend(server.GetSession(rid), new TcpPacket(PacketType.SERVER_REVIVAL_REVIVED));
+                                
+                                _reviveTimer[rid] = new();
+                            }
+                            else
+                                server.UDPMulticast(ref IPEndPoints, new UdpPacket(PacketType.SERVER_REVIVAL_PROGRESS, rid, _reviveTimer[rid].Progress));
+                        }
+                        break;
+                    }
+
+                case PacketType.CLIENT_ERECTOR_BALLS:
+                    {
+                        var x = reader.ReadSingle();
+                        var y = reader.ReadSingle();
+
+                        server.TCPMulticast(new TcpPacket(PacketType.CLIENT_ERECTOR_BALLS, x, y));
+                        break;
+                    }
             }
         }
 
@@ -346,7 +434,8 @@ namespace BetterServer.State
         {
             lock (server.Peers)
             {
-                foreach (var peer in server.Peers.Values)
+                var arr = server.Peers.Values.OrderBy(e => e.Player.DeadTimer);
+                foreach (var peer in arr)
                 {
                     if (peer.Player.IsAlive || peer.Player.HasEscaped)
                     {

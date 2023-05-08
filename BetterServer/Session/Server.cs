@@ -18,6 +18,7 @@ namespace BetterServer.Session
 
         /* Data */
         public Dictionary<ushort, Peer> Peers = new();
+        public int LastMap = -1;
 
         /* Actual servers */
         public MulticastServer MulticastServer;
@@ -61,27 +62,24 @@ namespace BetterServer.Session
         public void Tick() => State.Tick(this);
         public SharedServerSession? GetSession(ushort id) => (SharedServerSession?)SharedServer.GetSession(id);
 
-        public bool TCPSend(TcpSession? session, TcpPacket packet)
+        public void TCPSend(TcpSession? session, TcpPacket packet)
         {
             if (session == null)
-                return false;
+                return;
 
             try
             {
                 var arr = packet.ToArray();
-                return session.Send(arr, packet.Length);
+                session.Send(arr, packet.Length);
             }
             catch (Exception e)
             {
                 Terminal.LogDiscord($"Exception: {e}");
-                return false;
             }
         }
 
-        public bool TCPMulticast(TcpPacket packet, ushort? except = null)
+        public void TCPMulticast(TcpPacket packet, ushort? except = null)
         {
-            bool success = true;
-
             try
             {
                 var arr = packet.ToArray();
@@ -101,44 +99,34 @@ namespace BetterServer.Session
                         if (session == null)
                             continue;
 
-                        if (!session.Send(arr, packet.Length))
-                            success = false;
+                        session.Send(arr, packet.Length);
                     }
                 }
-
-                return success;
             }
             catch (Exception e)
             {
                 Terminal.LogDiscord($"Exception: {e}");
-                return false;
             }
         }
 
-        public bool UDPSend(IPEndPoint IPEndPoint, UdpPacket packet)
+        public void UDPSend(IPEndPoint IPEndPoint, UdpPacket packet)
         {
             try
             {
                 var arr = packet.ToArray();
-                var sent = MulticastServer.Send(IPEndPoint, arr, packet.Length);
-
-                return sent >= 0;
+                MulticastServer.Send(IPEndPoint, arr, packet.Length);
             }
             catch (InvalidOperationException)
             {
-                return false;
             }
             catch (Exception e)
             {
                 Terminal.LogDiscord($"Exception: {e}");
-                return false;
             }
         }
 
-        public bool UDPMulticast(ref List<IPEndPoint> IPEndPoints, UdpPacket packet, IPEndPoint? except = null)
+        public void UDPMulticast(ref List<IPEndPoint> IPEndPoints, UdpPacket packet, IPEndPoint? except = null)
         {
-            bool success = true;
-
             try
             {
                 var arr = packet.ToArray();
@@ -150,30 +138,21 @@ namespace BetterServer.Session
                         if (IPEndPoint == except)
                             continue;
 
-                        if (MulticastServer.Send(IPEndPoint, arr, packet.Length) <= 0)
-                            success = false;
-
-                        success = true;
+                        MulticastServer.Send(IPEndPoint, arr, packet.Length);
                     }
                 }
             }
             catch (InvalidOperationException)
             {
-                return false;
             }
             catch (Exception e)
             {
                 Terminal.LogDiscord($"Exception: {e}");
-                return false;
             }
-
-            return success;
         }
 
-        public bool UDPMulticast(ref Dictionary<ushort, IPEndPoint> IPEndPoints, UdpPacket packet, IPEndPoint? except = null)
+        public void UDPMulticast(ref Dictionary<ushort, IPEndPoint> IPEndPoints, UdpPacket packet, IPEndPoint? except = null)
         {
-            bool success = true;
-
             try
             {
                 var arr = packet.ToArray();
@@ -185,24 +164,17 @@ namespace BetterServer.Session
                         if (IPEndPoint.Value == except)
                             continue;
 
-                        if (MulticastServer.Send(IPEndPoint.Value, arr, packet.Length) <= 0)
-                            success = false;
-
-                        success = true;
+                        MulticastServer.Send(IPEndPoint.Value, arr, packet.Length);
                     }
                 }
             }
             catch (InvalidOperationException)
             {
-                return false;
             }
             catch (Exception e)
             {
                 Terminal.LogDiscord($"Exception: {e}");
-                return false;
             }
-
-            return success;
         }
 
         public void Passtrough(BinaryReader reader, TcpSession sender)
@@ -232,6 +204,9 @@ namespace BetterServer.Session
         public void DisconnectWithReason(TcpSession? session, string reason)
         {
             if (session == null)
+                return;
+
+            if (!session.IsRunning)
                 return;
 
             // Disconnection is handled on another thread since we don't want to deadlock server

@@ -1,12 +1,6 @@
 ﻿using ExeNet;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BetterServer.Session
 {
@@ -22,13 +16,13 @@ namespace BetterServer.Session
             _server = server;
         }
 
-       protected override void OnReady()
+        protected override void OnReady()
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
             Terminal.LogDiscord($"Server started on UDP port {Port}");
-       
-           base.OnReady();
-       }
+
+            base.OnReady();
+        }
 
         protected override void OnSocketError(IPEndPoint endpoint, SocketError error)
         {
@@ -46,14 +40,14 @@ namespace BetterServer.Session
         }
 
         protected override void OnData(IPEndPoint sender, byte[] data)
-       {
-           Thread.CurrentThread.Name = $"Server {_server.UID}";
-       
-           using var stream = new MemoryStream(data);
-           using var reader = new BinaryReader(stream);
-           _server.State.PeerUDPMessage(_server, sender, reader);
-       
-           base.OnData(sender, data);
+        {
+            Thread.CurrentThread.Name = $"Server {_server.UID}";
+
+            using var stream = new MemoryStream(data, 0, data.Length, false);
+            using var reader = new BinaryReader(stream);
+            _server.State.PeerUDPMessage(_server, sender, reader);
+
+            base.OnData(sender, data);
         }
     }
 }

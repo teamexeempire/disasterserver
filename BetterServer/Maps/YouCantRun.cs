@@ -14,7 +14,7 @@ namespace BetterServer.Maps
         {
             Spawn<MovingSpikeController>(server);
             Spawn<YCRSmokeController>(server);
-            SetTime(server, 205);
+            SetTime(server, 180);
 
             base.Init(server);
         }

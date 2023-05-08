@@ -32,7 +32,11 @@ namespace BetterServer.State
             typeof(VolcanoValley),
             typeof(GreenHill),
             typeof(MajinForest),
-            typeof(AngelIsland)
+            typeof(AngelIsland),
+            typeof(TortureCave),
+
+            /* whaaar */
+            typeof(FartZone)
         };
 
         private MapVoteMap[] _votes = new MapVoteMap[]
@@ -52,32 +56,42 @@ namespace BetterServer.State
             return Session.State.VOTE;
         }
 
-        public override void Init(Session.Server server)
+        public override void Init(Server server)
         {
             var numbers = new List<int>();
             var number = _rand.Next(0, Maps.Length);
 
             for (var i = 0; i < _votes.Length; i++)
             {
-                while (numbers.Contains(number))
-                    number = _rand.Next(0, Maps.Length);
+                while (numbers.Contains(number) || number == server.LastMap)
+                    number = _rand.Next(0, Maps.Length-1);
 
                 numbers.Add(number);
             }
 
             for (var i = 0; i < numbers.Count; i++)
             {
-                _votes[i].Map = Ext.CreateOfType<MajinForest>(); //Democracy 
-                _votes[i].MapID = (byte)Array.IndexOf(Maps, typeof(MajinForest));
-                //_votes[i].Map = Ext.CreateOfType<Map>(Maps[numbers[i]]);
-                //_votes[i].MapID = (byte)numbers[i];
+                //var map = typeof(GreenHill);
+                //_votes[i].Map = Ext.CreateOfType<Map>(map); //Democracy 
+                //_votes[i].MapID = (byte)Array.IndexOf(Maps, map);
+
+                _votes[i].Map = Ext.CreateOfType<Map>(Maps[numbers[i]]) ?? new HideAndSeek2();
+                _votes[i].MapID = (byte)numbers[i];
                 _votes[i].Votes = 0;
             }
 
             lock (server.Peers)
             {
                 foreach (var peer in server.Peers)
+                {
+                    if (peer.Value.Pending)
+                    {
+                        server.DisconnectWithReason(server.GetSession(peer.Key), "PacketType.CLIENT_REQUESTED_INFO missing.");
+                        continue;
+                    }
+
                     _votePeers.Add(peer.Key, false);
+                }
             }
 
             var packet = new TcpPacket(PacketType.SERVER_VOTE_MAPS, _votes[0].MapID, _votes[1].MapID, _votes[2].MapID);
@@ -176,6 +190,7 @@ namespace BetterServer.State
             var votes = _votes.Where(e => e.Votes == max).ToArray();
             var map = votes[_rand.Next(0, votes.Length)];
 
+            server.LastMap = map.MapID;
             server.SetState(new CharacterSelect(map.Map));
         }
     }

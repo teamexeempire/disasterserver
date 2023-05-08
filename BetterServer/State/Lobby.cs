@@ -1,4 +1,5 @@
 ﻿using BetterServer.Data;
+using BetterServer.Maps;
 using BetterServer.Session;
 using ExeNet;
 using System.Net;
@@ -146,6 +147,13 @@ namespace BetterServer.State
                     {
                         var id = reader.ReadUInt16();
                         var msg = reader.ReadStringNull();
+
+                        if (msg == "mermerzzzhruk")
+                        {
+                            server.SetState<CharacterSelect>(new CharacterSelect(new FartZone()));
+                            break;
+                        }
+
 
                         lock (server.Peers)
                         {

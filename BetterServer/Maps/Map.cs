@@ -1,8 +1,9 @@
-﻿using BetterServer.Entities;
+﻿using BetterServer.Data;
+using BetterServer.Entities;
 using BetterServer.Session;
 using BetterServer.State;
 using ExeNet;
-using System.Diagnostics;
+using System.Net;
 
 namespace BetterServer.Maps
 {
@@ -16,19 +17,21 @@ namespace BetterServer.Maps
         public bool BigRingReady = false;
         public ushort RingIDs = 1;
         public ushort BRingsIDs = 1;
+        public byte ExellerCloneIDs = 1;
 
-        private int _ringActivateTime = (Ext.FRAMESPSEC * Ext.FRAMESPSEC) - (10 * Ext.FRAMESPSEC);
-        private int _ringCoff = 5;
+        protected int RingActivateTime = (Ext.FRAMESPSEC * Ext.FRAMESPSEC) - (10 * Ext.FRAMESPSEC);
+        private float _ringCoff;
         private int _ringTimer = -(Ext.FRAMESPSEC * 4);
         private Random _rand = new();
         private bool[] _ringSpawns;
 
         public virtual void Init(Server server)
         {
-            lock(server.Peers)
+            _ringCoff = GetRingTime();
+            lock (server.Peers)
             {
                 if (server.Peers.Count > 3)
-                    _ringCoff = 4;
+                    _ringCoff--;
             }
 
             _ringSpawns = new bool[GetRingSpawnCount()];
@@ -36,10 +39,10 @@ namespace BetterServer.Maps
             var pack = new TcpPacket(PacketType.SERVER_GAME_PLAYERS_READY);
             server.TCPMulticast(pack);
         }
-        
+
         public virtual void Tick(Server server)
         {
-            if(Timer % Ext.FRAMESPSEC == 0)
+            if (Timer % Ext.FRAMESPSEC == 0)
             {
                 var packet = new TcpPacket(PacketType.SERVER_GAME_TIME_SYNC);
                 packet.Write((ushort)(Timer));
@@ -54,7 +57,7 @@ namespace BetterServer.Maps
 
             lock (Entities)
             {
-                for(var i = 0; i < Entities.Count; i++)
+                for (var i = 0; i < Entities.Count; i++)
                 {
                     var ent = Entities[i];
                     var packet = ent.Tick(server, Game, this);
@@ -65,6 +68,14 @@ namespace BetterServer.Maps
                     server.UDPMulticast(ref Game.IPEndPoints, packet);
                 }
             }
+        }
+
+        public virtual void PeerLeft(Server server, TcpSession session, Peer peer)
+        {
+        }
+
+        public virtual void PeerUDPMessage(Server server, IPEndPoint endpoint, BinaryReader reader)
+        {
         }
 
         public virtual void PeerTCPMessage(Server server, TcpSession session, BinaryReader reader)
@@ -78,6 +89,9 @@ namespace BetterServer.Maps
                 /* Tails' projectile */
                 case PacketType.CLIENT_TPROJECTILE:
                     {
+                        if (FindOfType<TailsProjectile>().Length > 0)
+                            break;
+
                         var projectile = new TailsProjectile
                         {
                             OwnerID = session.ID,
@@ -141,7 +155,7 @@ namespace BetterServer.Maps
 
                         for (var i = 0; i < _cnt; i++)
                         {
-                            if(_redRing)
+                            if (_redRing)
                             {
                                 Spawn(server, new CreamRing()
                                 {
@@ -209,6 +223,45 @@ namespace BetterServer.Maps
                         }
                         break;
                     }
+
+                case PacketType.CLIENT_ERECTOR_BRING_SPAWN:
+                    {
+                        var x = reader.ReadSingle();
+                        var y = reader.ReadSingle();
+                        var inst = Spawn<BlackRing>(server, false);
+                        inst.ID = BRingsIDs++;
+
+                        server.TCPMulticast(new TcpPacket(PacketType.SERVER_ERECTOR_BRING_SPAWN, inst.ID, x, y));
+                        break;
+                    }
+
+                case PacketType.CLIENT_EXELLER_SPAWN_CLONE:
+                    {
+                        if (FindOfType<ExellerClone>().Length > 1)
+                            break;
+
+                        var x = reader.ReadUInt16();
+                        var y = reader.ReadUInt16();
+                        var dir = reader.ReadSByte();
+                        Spawn(server, new ExellerClone(session.ID, ExellerCloneIDs++, x, y, dir));
+                        break;
+                    }
+
+                case PacketType.CLIENT_EXELLER_TELEPORT_CLONE:
+                    {
+                        var uid = reader.ReadByte();
+                        var clones = FindOfType<ExellerClone>();
+
+                        if (clones == null)
+                            break;
+
+                        var clone = clones.Where(e => e.ID == uid).FirstOrDefault();
+                        if (clone == null)
+                            break;  
+
+                        Destroy(server, clone);
+                        break;
+                    }
             }
         }
 
@@ -220,13 +273,13 @@ namespace BetterServer.Maps
 
         public void ActivateRingAfter(int afterSeconds)
         {
-            _ringActivateTime = (Ext.FRAMESPSEC * Ext.FRAMESPSEC) - (afterSeconds * Ext.FRAMESPSEC);
+            RingActivateTime = (Ext.FRAMESPSEC * Ext.FRAMESPSEC) - (afterSeconds * Ext.FRAMESPSEC);
             Terminal.LogDebug($"Ring activate time is set to {Timer} frames");
         }
 
         public void FreeRingID(byte iid)
         {
-            lock(_ringSpawns)
+            lock (_ringSpawns)
                 _ringSpawns[iid] = false;
         }
 
@@ -240,7 +293,7 @@ namespace BetterServer.Maps
                     return false;
                 }
 
-                while(true)
+                while (true)
                 {
                     byte rn = (byte)_rand.Next(_ringSpawns.Length);
 
@@ -256,18 +309,21 @@ namespace BetterServer.Maps
 
         #region Entities
 
-        public Entity? Spawn<T>(Server server) where T : Entity
+        public T? Spawn<T>(Server server, bool callSpawn = true) where T : Entity
         {
             T? entity = Ext.CreateOfType<T>();
 
             if (entity == null)
                 return null;
 
-            TcpPacket? pack;
+            TcpPacket? pack = null;
+
             lock (Entities)
             {
                 Entities.Add(entity);
-                pack = entity.Spawn(server, Game, this);
+
+                if (callSpawn)
+                    pack = entity.Spawn(server, Game, this);
             }
 
             if (pack != null)
@@ -277,13 +333,16 @@ namespace BetterServer.Maps
             return entity;
         }
 
-        public T Spawn<T>(Server server, T entity) where T : Entity
+        public T Spawn<T>(Server server, T entity, bool callSpawn = true) where T : Entity
         {
-            TcpPacket? pack;
+            TcpPacket? pack = null;
+
             lock (Entities)
             {
                 Entities.Add(entity);
-                pack = entity.Spawn(server, Game, this);
+
+                if (callSpawn)
+                    pack = entity.Spawn(server, Game, this);
             }
 
             if (pack != null)
@@ -327,7 +386,7 @@ namespace BetterServer.Maps
 
         public T[]? FindOfType<T>() where T : Entity
         {
-            lock(Entities)
+            lock (Entities)
             {
                 var pick = Entities.Where(e => e is T).ToArray();
                 Terminal.LogDebug($"Entity search found {pick.Length} entities of type {typeof(T).FullName}");
@@ -339,7 +398,7 @@ namespace BetterServer.Maps
 
         private void DoRingTimer(Server server)
         {
-            if(_ringTimer >= (_ringCoff * Ext.FRAMESPSEC))
+            if (_ringTimer >= (_ringCoff * Ext.FRAMESPSEC))
             {
                 _ringTimer = 0;
 
@@ -354,21 +413,24 @@ namespace BetterServer.Maps
             _ringTimer++;
         }
 
-        private void DoBigRingTimer(Server server)
+        protected virtual void DoBigRingTimer(Server server)
         {
             if (Timer - (Ext.FRAMESPSEC * Ext.FRAMESPSEC) <= 0 && !BigRingSpawned)
             {
                 var packet = new TcpPacket(PacketType.SERVER_GAME_SPAWN_RING);
+                packet.Write(false);
                 packet.Write((byte)_rand.Next(255));
                 server.TCPMulticast(packet);
 
                 BigRingSpawned = true;
             }
 
-            var min = _ringActivateTime; // 1 min - 10 sec
+            var min = RingActivateTime; // 1 min - 10 sec
             if (Timer - min <= 0 && !BigRingReady)
             {
-                var packet = new TcpPacket(PacketType.SERVER_GAME_RING_READY);
+                var packet = new TcpPacket(PacketType.SERVER_GAME_SPAWN_RING);
+                packet.Write(true);
+                packet.Write((byte)_rand.Next(255));
                 server.TCPMulticast(packet);
 
                 BigRingSpawned = true;
@@ -379,6 +441,11 @@ namespace BetterServer.Maps
         {
             lock (server.Peers)
                 return (server.Peers.Count - 1) * 20;
+        }
+
+        protected virtual float GetRingTime()
+        {
+            return 5.0f;
         }
 
         protected abstract int GetRingSpawnCount();
