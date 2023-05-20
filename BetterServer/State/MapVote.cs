@@ -39,6 +39,8 @@ namespace BetterServer.State
             typeof(FartZone)
         };
 
+        public static List<int> Excluded = new() { 16 };
+
         private MapVoteMap[] _votes = new MapVoteMap[]
         {
             new(),
@@ -63,15 +65,15 @@ namespace BetterServer.State
 
             for (var i = 0; i < _votes.Length; i++)
             {
-                while (numbers.Contains(number) || number == server.LastMap)
-                    number = _rand.Next(0, Maps.Length-1);
+                while (Excluded.Contains(number) || numbers.Contains(number) || number == server.LastMap)
+                    number = _rand.Next(0, Maps.Length - 1);
 
                 numbers.Add(number);
             }
 
             for (var i = 0; i < numbers.Count; i++)
             {
-                //var map = typeof(GreenHill);
+                //var map = typeof(NastyParadise);
                 //_votes[i].Map = Ext.CreateOfType<Map>(map); //Democracy 
                 //_votes[i].MapID = (byte)Array.IndexOf(Maps, map);
 

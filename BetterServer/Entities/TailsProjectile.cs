@@ -66,8 +66,11 @@ namespace BetterServer.Entities
         {
             X += Direction * 12;
 
-            if(X <= 0 || _timer-- <= 0)
+            if (X <= 0 || _timer-- <= 0)
+            {
                 map.Destroy(server, this);
+                return null;
+            }
 
             return new UdpPacket
             (
@@ -75,12 +78,7 @@ namespace BetterServer.Entities
 
                 (byte)1, // Update
                 (ushort)X,
-                (ushort)Y,
-                (ushort)OwnerID,
-                Direction,
-                Damage,
-                IsExe,
-                Charge
+                (ushort)Y
             );
         }
     }

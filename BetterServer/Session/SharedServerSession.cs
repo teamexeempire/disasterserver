@@ -1,6 +1,7 @@
 ﻿using BetterServer.Data;
 using ExeNet;
 using System.Collections;
+using System.Net;
 using System.Net.Sockets;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -30,6 +31,12 @@ namespace BetterServer.Session
 
             lock (_server.Peers)
             {
+                if(BanList.Check((RemoteEndPoint! as IPEndPoint).Address.ToString()!))
+                {
+                    _server.DisconnectWithReason(this, "You were banned from this server.");
+                    return;
+                }
+
                 if (_server.Peers.Count >= 7)
                 {
                     _server.DisconnectWithReason(this, "Server is full. (7/7)");
@@ -74,6 +81,8 @@ namespace BetterServer.Session
 
                 if (peer == null)
                     return;
+
+                Program.Window.RemovePlayer(peer);
 
                 var packet = new TcpPacket(PacketType.SERVER_PLAYER_LEFT, peer.ID);
                 _server.TCPMulticast(packet, ID);

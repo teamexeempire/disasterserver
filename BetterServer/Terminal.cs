@@ -8,160 +8,121 @@ using System.Threading.Tasks;
 
 namespace BetterServer
 {
-    public enum LogLevel
-    {
-        Debug,
-        Info
-    }
-
-    public class LogLine
-    {
-        public LogLevel Level;
-        public string Message;
-    }
-
     public class Terminal
     {
-        public static List<LogLine> Buffer { get; private set; } = new();
+        private static StringBuilder _builder = new();
+        private static int _lines = 0;
+        private static string _fname;
 
-        private static object _lock = new object();
+        static Terminal()
+        {
+            try
+            {
+                if (!Directory.Exists("Logs"))
+                    Directory.CreateDirectory("Logs");
+
+                _fname = $"Logs/{DateTime.Now:yyyyMMddTHHmmss}.log";
+                AppDomain currentDomain = default(AppDomain);
+                currentDomain = AppDomain.CurrentDomain;
+                currentDomain.UnhandledException += CurrentDomain_UnhandledException;
+                currentDomain.ProcessExit += CurrentDomain_ProcessExit;
+            }
+            catch
+            {
+                Console.WriteLine("Logging to file is disabled due to an error.");
+            }
+        }
+
+        private static void CurrentDomain_ProcessExit(object? sender, EventArgs e)
+        {
+            try
+            {
+                File.AppendAllText(_fname, _builder.ToString());
+            }
+            catch
+            { }
+        }
+
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                File.AppendAllText(_fname, _builder.ToString());
+            }
+            catch
+            { }
+        }
 
         public static void Log(string text)
         {
             var time = DateTime.Now.ToLongTimeString();
+            var msg = $"[{time} {Thread.CurrentThread.Name} INFO] {text}";
 
-            // For logging
-            if (!Program.Config.EnableInput)
-            {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"[{time} {Thread.CurrentThread.Name}] {text}");
-                return;
-            }
+            Console.ForegroundColor = ConsoleColor.White;
+            Program.Window.Log(msg);
 
-            lock (Buffer)
+            lock (_builder)
             {
-                Buffer.Add(new LogLine()
+                _builder.AppendLine(msg);
+
+                if (_lines++ > 20)
                 {
-                    Level = LogLevel.Info,
-                    Message = $"[{DateTime.Now.ToLongTimeString()} {Thread.CurrentThread.Name}] {text}"
-                });
-
-                if (Buffer.Count > 8192)
-                    Buffer.RemoveAt(0);
-
-                Redraw();
+                    File.AppendAllText(_fname, _builder.ToString());
+                    _builder.Clear();
+                }
             }
         }
 
         public static void LogDebug(string text)
         {
-            if (!Program.Config.LogDebug)
-                return;
-
             var time = DateTime.Now.ToLongTimeString();
+            var msg = $"[{time} {Thread.CurrentThread.Name} DEBUG] {text}";
 
-            // For logging
-            if (!Program.Config.EnableInput)
+            lock (_builder)
             {
-                Console.ForegroundColor = ConsoleColor.Gray;
-                Console.WriteLine($"[{time} {Thread.CurrentThread.Name}] {text}");
-                return;
-            }
+                _builder.AppendLine(msg);
 
-            lock (Buffer)
-            {
-                Buffer.Add(new LogLine()
+                if (_lines++ > 20)
                 {
-                    Level = LogLevel.Debug,
-                    Message = $"[{DateTime.Now.ToLongTimeString()} {Thread.CurrentThread.Name}] {text}"
-                });
-
-                if (Buffer.Count > 8192)
-                    Buffer.RemoveAt(0);
-
-                Redraw();
+                    File.AppendAllText(_fname, _builder.ToString());
+                    _builder.Clear();
+                }
             }
+
+            if (!Options.Get<bool>("debug_mode"))
+                return;
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Program.Window.Log(msg);
         }
 
         public static void LogDiscord(string text)
         {
             var time = DateTime.Now.ToLongTimeString();
+            var msg = $"[{time} {Thread.CurrentThread.Name} INFO] {text}";
 
-            // For logging
-            if (!Program.Config.EnableInput)
+            Console.ForegroundColor = ConsoleColor.White;
+            Program.Window.Log(msg);
+
+            lock (_builder)
             {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"[{time} {Thread.CurrentThread.Name}] {text}");
+                _builder.AppendLine(msg);
 
-                SendDiscord(text, Thread.CurrentThread.Name);
-                return;
-            }
-
-            lock (Buffer)
-            {
-                Buffer.Add(new LogLine()
+                if (_lines++ > 20)
                 {
-                    Level = LogLevel.Info,
-                    Message = $"[{DateTime.Now.ToLongTimeString()} {Thread.CurrentThread.Name}] {text}"
-                });
-
-                if (Buffer.Count > 8192)
-                    Buffer.RemoveAt(0);
-
-                Redraw();
+                    File.AppendAllText(_fname, _builder.ToString());
+                    _builder.Clear();
+                }
             }
+
+            if (string.IsNullOrEmpty(Options.Get<string>("webhook_url")))
+                return;
 
             SendDiscord(text, Thread.CurrentThread.Name);
         }
 
-        public static void Redraw(int inputLen = -1)
-        {
-            lock (_lock)
-            {
-                // Store for later
-                var pos = Console.CursorLeft;
-
-                Console.CursorVisible = false;
-                Console.SetCursorPosition(0, 0);
-                Console.WriteLine("+--- Log Window --------------------+");
-                Console.SetCursorPosition(0, 1);
-
-                foreach (var line in Buffer.TakeLast(Console.BufferHeight - 5))
-                {
-                    Console.ForegroundColor = line.Level == LogLevel.Debug ? ConsoleColor.Gray : ConsoleColor.White;
-
-                    int len = line.Message.Length > Console.BufferWidth ? Console.BufferWidth : line.Message.Length;
-                    string msg = line.Message[..len];
-                    string emptiness = new string(' ', Console.BufferWidth - line.Message[..len].Length);
-                    Console.WriteLine($"{line.Message}{emptiness}");
-                }
-
-                Console.CursorVisible = true;
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.SetCursorPosition(0, Console.BufferHeight - 3);
-                Console.Write("+--- Command Window ----------------+");
-                Console.SetCursorPosition(0, Console.BufferHeight - 2);
-
-                if (inputLen != -1)
-                {
-                    var str = new string(' ', inputLen+1);
-                    Console.Write(str);
-                    Console.CursorLeft = 0;
-                    Console.Write(":");
-                }
-                else
-                {
-                    Console.Write(":");
-                    Console.CursorLeft = pos;
-                }
-            }
-        }
-
         public static void SendDiscord(string message, string? name, string title = "")
         {
-            if (Program.Config?.WebhookURL == null)
-                return;
-
             var @struct = new
             {
                 username = $"Thread ({name})",
@@ -183,7 +144,7 @@ namespace BetterServer
                     var client = new HttpClient();
                     client.Timeout = TimeSpan.FromSeconds(2);
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    await client.PostAsync(Program.Config?.WebhookURL, content);
+                    await client.PostAsync(Options.Get<string>("webhook_url")!, content);
                 }
                 catch
                 { }

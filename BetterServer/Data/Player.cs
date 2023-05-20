@@ -6,6 +6,28 @@ using System.Threading.Tasks;
 
 namespace BetterServer.Data
 {
+    public enum Character : int
+    {
+        None = -1,
+
+        Exe = 0,
+        Tails = 1,
+        Knuckles = Tails + 1,
+        Eggman = Tails + 2,
+        Amy = Tails + 3,
+        Cream = Tails + 4,
+        Sally = Tails + 5,
+    }
+
+    public enum ExeCharacter
+    {
+        None = -1,
+        Original,
+        Chaos,
+        Exetior,
+        Exeller
+    }
+
     public class Player
     {
         public Character Character = Character.None;

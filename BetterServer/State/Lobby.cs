@@ -136,6 +136,8 @@ namespace BetterServer.State
                                 Terminal.LogDiscord($"{name} (ID {server.Peers[session.ID].ID}) joined.");
                                 packet.Write(server.Peers[session.ID].ID);
                                 packet.Write(name);
+
+                                Program.Window.AddPlayer(server.Peers[session.ID]);
                             }
                         }
                         server.TCPMulticast(packet, session.ID);
@@ -148,9 +150,9 @@ namespace BetterServer.State
                         var id = reader.ReadUInt16();
                         var msg = reader.ReadStringNull();
 
-                        if (msg == "mermerzzzhruk")
+                        if (msg == "mermerzzzhruk" || msg == "юю")
                         {
-                            server.SetState<CharacterSelect>(new CharacterSelect(new FartZone()));
+                            server.SetState(new CharacterSelect(new FartZone()));
                             break;
                         }
 

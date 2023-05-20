@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BetterServer
+﻿namespace BetterServer
 {
     public enum PacketType : byte
     {
@@ -107,6 +101,7 @@ namespace BetterServer
 
         CLIENT_REVIVAL_PROGRESS,
         CLIENT_PLAYER_HEAL,
+        CLIENT_PLAYER_HEAL_PART,
         SERVER_REVIVAL_PROGRESS,
         SERVER_REVIVAL_STATUS,
         SERVER_REVIVAL_RINGSUB,
@@ -120,8 +115,9 @@ namespace BetterServer
         CLIENT_PLAYER_ESCAPED,
         CLIENT_LOBBY_PLAYERS_REQUEST,
         CLIENT_CREAM_SPAWN_RINGS,
-        CLIENT_RING_SPAWNED2,
         CLIENT_SPAWN_EFFECT,
-        CLIENT_CHAT_MESSAGE
+        CLIENT_CHAT_MESSAGE,
+
+        CLIENT_PLAYER_POTATER
     }
 }

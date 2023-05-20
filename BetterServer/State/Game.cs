@@ -104,24 +104,40 @@ namespace BetterServer.State
                 var pid = reader.ReadUInt16();
                 var type = (PacketType)reader.ReadByte();
 
-                if (!_waiting)
-                {
-                    var pack = new UdpPacket(type);
-                    while (reader.BaseStream.Position < reader.BaseStream.Length)
-                        pack.Write(reader.ReadByte());
-
-                    server.UDPMulticast(ref IPEndPoints, pack, endpoint);
-                }
-
                 reader.BaseStream.Position = 3;
                 _lastPackets[pid] = 0;
                 switch (type)
                 {
                     case PacketType.CLIENT_PING:
                         {
+                            lock (IPEndPoints)
+                            {
+                                if (!IPEndPoints.ContainsKey(pid))
+                                {
+                                    Terminal.LogDebug($"Received from {endpoint}");
+                                    IPEndPoints.Add(pid, endpoint);
+
+                                    lock (_packetTimeouts)
+                                        _packetTimeouts[pid] = -1;
+                                }
+                            }
+
                             var pk = new UdpPacket(PacketType.SERVER_PONG);
                             server.UDPSend(endpoint, pk);
-                            return;
+                            break;
+                        }
+
+                    case PacketType.CLIENT_PLAYER_DATA:
+                        {
+                            if (!_waiting)
+                            {
+                                var pack = new UdpPacket(type);
+                                while (reader.BaseStream.Position < reader.BaseStream.Length)
+                                    pack.Write(reader.ReadByte());
+
+                                server.UDPMulticast(ref IPEndPoints, pack, endpoint);
+                            }
+                            break;
                         }
                 }
 
@@ -402,7 +418,7 @@ namespace BetterServer.State
                             if (!_reviveTimer[rid].DeathNote.Contains(session.ID))
                                 _reviveTimer[rid].DeathNote.Add(session.ID);
 
-                            _reviveTimer[rid].Progress += 0.016 + 0.004 * rings;
+                            _reviveTimer[rid].Progress += 0.013 + 0.004 * rings;
                             if (_reviveTimer[rid].Progress > 1)
                             {
                                 foreach (var p in _reviveTimer[rid].DeathNote)
