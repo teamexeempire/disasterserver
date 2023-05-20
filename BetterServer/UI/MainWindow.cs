@@ -59,12 +59,10 @@ namespace BetterServer.UI
                             case UIWrapper.PollType.POLL_CLEAR_EXCLUDES:
                                 MapVote.Excluded.Clear();
                                 MapVote.Excluded.Add(16);
-                                Terminal.Log($"Exclude list cleared.");
                                 break;
 
                             case UIWrapper.PollType.POLL_ADD_EXCLUDE:
                                 MapVote.Excluded.Add(data.value1);
-                                Terminal.Log($"Added {data.value1} to exclude list.");
                                 break;
 
                             case UIWrapper.PollType.POLL_KICK:

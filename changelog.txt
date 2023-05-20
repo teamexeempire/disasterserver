@@ -1,0 +1,7 @@
+Version 321
+-----------------
+- updated launcher
+- moved shit to github
+- some boob fixes
+
+known bugs: exeller clones

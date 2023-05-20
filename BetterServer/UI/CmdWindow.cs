@@ -1,6 +1,8 @@
 using BetterServer.Data;
 using BetterServer.Session;
 using BetterServer.State;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace BetterServer.UI
 {
@@ -23,6 +25,34 @@ namespace BetterServer.UI
             Terminal.Log("(c) Team Exe Empire 2023");
             Terminal.Log("===================");
             Terminal.Log("Enter 127.0.0.1 on your PC to join your server.\n");
+
+            // Load mlist from config
+            string? file = Options.Get<string>("mapset_file");
+
+            if(!string.IsNullOrEmpty(file))
+            {
+                try
+                {
+                    JsonNode doc = JsonNode.Parse(File.ReadAllText(file))!;
+                    JsonArray arr = doc.Root.AsArray();
+
+                    foreach(JsonNode? node in arr)
+                    {
+                        if (node == null)
+                            continue;
+
+                        MapVote.Excluded.Add((int)node.AsValue());
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    Terminal.Log("Failed to load mapset_file (Invalid format?)!");
+                }
+                catch
+                {
+                    Terminal.Log("Failed to load mapset_file!");
+                }
+            }
 
             for (var i = 0; i < Options.Get<int>("server_count"); i++)
             {

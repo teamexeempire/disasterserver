@@ -39,7 +39,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="page1">
        <attribute name="title">
@@ -183,7 +183,7 @@
           <item>
            <widget class="QGroupBox" name="groupBox_17">
             <property name="title">
-             <string>Map Set</string>
+             <string>Map sets</string>
             </property>
             <layout class="QGridLayout" name="gridLayout_2" rowstretch="0,0,0">
              <property name="sizeConstraint">

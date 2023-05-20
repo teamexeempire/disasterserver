@@ -63,20 +63,35 @@ namespace BetterServer.State
             var numbers = new List<int>();
             var number = _rand.Next(0, Maps.Length);
 
-            for (var i = 0; i < _votes.Length; i++)
+            int uniqueCount = 0;
+
+            for(int i = 0; i < Maps.Length; i++)
             {
-                while (Excluded.Contains(number) || numbers.Contains(number) || number == server.LastMap)
+                if (Excluded.Contains(i))
+                    continue;
+
+                uniqueCount++;
+            }
+
+            if(uniqueCount < 3)
+                server.LastMap = -1;
+
+            for (var i = 0; i < (uniqueCount >= _votes.Length ? _votes.Length : uniqueCount); i++)
+            {
+                while ((Excluded.Contains(number) || numbers.Contains(number) || number == server.LastMap))
                     number = _rand.Next(0, Maps.Length - 1);
 
                 numbers.Add(number);
             }
 
+            if(uniqueCount < _votes.Length)
+            {
+                for(int i = 0; i < _votes.Length - uniqueCount; i++)
+                    numbers.Add(number);
+            }
+
             for (var i = 0; i < numbers.Count; i++)
             {
-                //var map = typeof(NastyParadise);
-                //_votes[i].Map = Ext.CreateOfType<Map>(map); //Democracy 
-                //_votes[i].MapID = (byte)Array.IndexOf(Maps, map);
-
                 _votes[i].Map = Ext.CreateOfType<Map>(Maps[numbers[i]]) ?? new HideAndSeek2();
                 _votes[i].MapID = (byte)numbers[i];
                 _votes[i].Votes = 0;
