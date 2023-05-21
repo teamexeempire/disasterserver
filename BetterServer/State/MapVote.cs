@@ -73,7 +73,7 @@ namespace BetterServer.State
                 uniqueCount++;
             }
 
-            if(uniqueCount < 3)
+            if(uniqueCount <= 3)
                 server.LastMap = -1;
 
             for (var i = 0; i < (uniqueCount >= _votes.Length ? _votes.Length : uniqueCount); i++)

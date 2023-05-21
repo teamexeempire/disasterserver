@@ -26,9 +26,8 @@ namespace BetterServer
 
             if (Options.Get<bool>("enable_stat"))
             {
-                //TODO: make stat server
-                //StatServer stat = new();
-                //stat.Start();
+                StatServer stat = new();
+                stat.Start();
             }
 
             Window = Options.Get<bool>("console_mode") || Options.Get<int>("server_count") > 1 ? new CmdWindow() : new MainWindow();

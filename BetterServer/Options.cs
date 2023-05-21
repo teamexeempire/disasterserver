@@ -12,15 +12,20 @@ namespace BetterServer
     public class Options
     {
         private static JsonNode _doc;
+        private static string _path;
 
         static Options()
         {
+            _path = "Config/Options.json";
             try
             {
-                if (!File.Exists("Config/Options.json"))
+                if(Environment.GetCommandLineArgs().Length > 1)
+                    _path = Environment.GetCommandLineArgs()[1];
+
+                if (!File.Exists(_path))
                     WriteDefault();
-                else
-                    _doc = JsonNode.Parse(File.ReadAllText("Config/Options.json"))!;
+                
+                _doc = JsonNode.Parse(File.ReadAllText(_path))!;
             }
             catch
             {
@@ -50,7 +55,7 @@ namespace BetterServer
                 if (!Directory.Exists("Config"))
                     Directory.CreateDirectory("Config");
 
-                File.WriteAllText("Config/Options.json", ser);
+                File.WriteAllText(_path, ser);
             }
             catch
             {
@@ -62,7 +67,7 @@ namespace BetterServer
         {
             _doc[key] = value;
 
-            File.WriteAllText("Config/Options.json", _doc.ToJsonString());
+            File.WriteAllText(_path, _doc.ToJsonString());
         }
 
         public static T? Get<T>(string key) => _doc[key].AsValue().Deserialize<T>();

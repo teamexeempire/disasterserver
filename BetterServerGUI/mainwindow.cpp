@@ -314,7 +314,7 @@ void MainWindow::on_player_kick()
     {
         auto pid = it->data(Qt::UserRole).toInt();
 
-        queueEvent({ pid, PollData::POLL_KICK });
+        queueEvent({ (uint16_t)pid, PollData::POLL_KICK });
     }
 }
 
@@ -324,7 +324,7 @@ void MainWindow::on_player_ban()
     {
         auto pid = it->data(Qt::UserRole).toInt();
 
-        queueEvent({ pid, PollData::POLL_BAN });
+        queueEvent({ (uint16_t)pid, PollData::POLL_BAN });
     }
 }
 

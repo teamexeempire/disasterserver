@@ -128,13 +128,13 @@ namespace BetterServer.UI
                         }
                     }
 
-                    Thread.Sleep(10);
+                    Thread.Sleep(1);
                 }
 
                 Environment.Exit(0);
                 return true;
             }
-            catch
+            catch(Exception e)
             {
                 return false;
             }
