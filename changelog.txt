@@ -1,7 +1,11 @@
-Version 321
+Version 322
 -----------------
-- updated launcher
-- moved shit to github
-- some boob fixes
-
-known bugs: exeller clones
+-options and about menus
+-chat commands
+-better local servers
+-skin debug (press 0-2 midgame)
+-roll and slide nerf
+-eggman.exe's shield slows down
+-act 9 nerf(more freq ring spawn, no red rings)
+-ycr gas nerf(1st second is neutral)
+-exellers tracker fix & general bug fixes 
