@@ -1,5 +1,6 @@
-Version 324
+Version 325
 -----------------
-- haunty dirst
-- bugfik
-- dar tower changes
+-mapvote and char selec ui
+-new skins for exes and demoniserd
+-red ring nerf read game mechanics
+-burp fixes
