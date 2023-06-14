@@ -1,6 +1,4 @@
-Version 325
+Version 325.1
 -----------------
--mapvote and char selec ui
--new skins for exes and demoniserd
--red ring nerf read game mechanics
--burp fixes
+-zhuk fix
+-shtits
