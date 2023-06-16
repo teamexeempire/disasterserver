@@ -45,6 +45,12 @@ namespace BetterServer.Session
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
 
+            if (data.Length > 128)
+            {
+                Terminal.LogDiscord("UDP overload (data.Length > 128)");
+                return;
+            }
+            
             using var stream = new MemoryStream(data, 0, data.Length, false);
             using var reader = new BinaryReader(stream);
             _server.State.PeerUDPMessage(_server, sender, reader);

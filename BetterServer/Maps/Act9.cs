@@ -31,5 +31,12 @@ namespace BetterServer.Maps
         {
             return 38;
         }
+
+        protected override float GetRingTime()
+        {
+            return 3;
+        }
+
+        public override bool CanSpawnRedRings() => false;
     }
 }

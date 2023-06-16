@@ -15,7 +15,7 @@ namespace BetterServer.Maps
 
         public override void Init(Server server)
         {
-            for(byte i = 0; i < 11; i++)
+            for(byte i = 0; i < 10; i++)
                 Spawn(server, new NAPIce(i));
 
             var ball = Spawn(server, new NAPSnowball(0, 10, 1));

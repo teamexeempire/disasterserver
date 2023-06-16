@@ -34,7 +34,8 @@ struct PollData
         POLL_UNBAN,
         POLL_BACKTOLOBBY,
         POLL_EXEWIN,
-        POLL_SURVWIN
+        POLL_SURVWIN,
+        POLL_PRACTICE
     } type;
 
     char value2[256];

@@ -10,6 +10,7 @@
 #include <QJsonArray>
 #include <QMessageBox>
 #include <QPointF>
+#include <QAction>
 #include <chrono>
 #include <functional>
 
@@ -34,6 +35,27 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ui->players->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->players, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(on_playersContextMenu(const QPoint &)));
+
+    ui->mapSet->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->mapSet, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(on_mapsContextMenu(const QPoint &)));
+
+    connect(ui->actionAbout_QT, &QAction::triggered, [=](bool a)
+            {
+                QMessageBox::aboutQt(this);
+            });
+
+
+    connect(ui->actionAbout_BetterServer, &QAction::triggered, [=](bool a)
+            {
+                QMessageBox::about(this, "About BetterServer", "BetterServer is a complete rewrite of original DisasterServer.\n\n(c) 2023 Team Exe Empire");
+            });
+
+
+    connect(ui->actionExit, &QAction::triggered, [=](bool a)
+            {
+                queueEvent(PollData { 0, PollData::POLL_QUIT });
+                this->close();
+            });
 
     resetMapList();
 }
@@ -80,7 +102,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     queueEvent(PollData { 0, PollData::POLL_QUIT });
 }
 
-void MainWindow::setMapList(std::array<bool, 16> array)
+void MainWindow::setMapList(std::array<bool, 18> array)
 {
     resetMapList();
 
@@ -98,7 +120,7 @@ void MainWindow::resetMapList()
     ui->mapSet->clear();
     queueEvent({ 0, PollData::POLL_CLEAR_EXCLUDES });
 
-    const char* arr[] = { "Hide and Seek Act 2", "Ravine Mist", "...", "Desert Town", "You Can't Run", "Limp City", "Not Perfect", "Kind And Fair", "Act 9", "Nasty Paradise", "Priceless Freedom", "Volcano Valley", "Hill", "Majin Forest", "Hide and Seek", "Torture Cave" };
+    const char* arr[] = { "Hide and Seek Act 2", "Ravine Mist", "...", "Desert Town", "You Can't Run", "Limp City", "Not Perfect", "Kind And Fair", "Act 9", "Nasty Paradise", "Priceless Freedom", "Volcano Valley", "Hill", "Majin Forest", "Hide and Seek", "Torture Cave", "Dark Tower", "Haunting Dream" };
     for(const char* str : arr)
     {
         QListWidgetItem* item = new QListWidgetItem(str, ui->mapSet);
@@ -147,42 +169,42 @@ void MainWindow::on_comboBox_currentIndexChanged(int index)
     switch(index)
     {
     case 0:
-        setMapList(std::array<bool, 16> { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true });
+        setMapList(std::array<bool, 18> { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true });
         break;
 
     case 1:
         //                                 hs2   rmz    ...   dt     ycr   limp   np    kaf   act9   nap   price  volcan hill  majon   hs1  torture
-        setMapList(std::array<bool, 16> { false, false, true, false, true, false, true, true, true, false, false, false, true, false, true, false });
+        setMapList(std::array<bool, 18> { false, false, true, false, true, false, true, true, true, false, false, false, true, false, true, false, false, false });
         break;
 
     case 2:
         //                                 hs2   rmz    ...   dt     ycr   limp   np    kaf   act9   nap   price  volcan   hill  majon   hs1  torture
-        setMapList(std::array<bool, 16> { true, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false });
+        setMapList(std::array<bool, 18> { true, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true });
         break;
 
     case 3:
         //                                 hs2   rmz    ...   dt     ycr   limp   np    kaf   act9   nap   price  volcan  hill  majon   hs1  torture
-        setMapList(std::array<bool, 16> { false, true, false, true, true, false, false, true, false, false, false, true, true, false, true, false });
+        setMapList(std::array<bool, 18> { false, true, false, true, true, false, false, true, false, false, false, true, true, false, true, false, false, false });
         break;
 
     case 4:
         //                                 hs2   rmz     ...    dt     ycr   limp   np    kaf   act9   nap   price  volcan  hill  majon   hs1  torture
-        setMapList(std::array<bool, 16> { false, false, false, false, false, true, true, false, false, true, false, false, false, false, false, true });
+        setMapList(std::array<bool, 18> { false, false, false, false, false, true, true, false, false, true, false, false, false, false, false, true, false, false });
         break;
 
     case 5:
         //                                 hs2   rmz     ...    dt     ycr    limp   np     kaf   act9   nap  price  volcan  hill  majon   hs1  torture
-        setMapList(std::array<bool, 16> { false, false, false, false, false, false, false, false, true, false, true, false, false, true, false, false });
+        setMapList(std::array<bool, 18> { false, false, false, false, false, false, false, false, true, false, true, false, false, true, false, false, false, false });
         break;
 
     case 6:
         //                                 hs2   rmz     ...    dt    ycr    limp    np   kaf   act9   nap  price  volcan  hill  majon   hs1  torture
-        setMapList(std::array<bool, 16> { false, true, false, true, false, false, false, false, false, true, true, false, false, false, false, false });
+        setMapList(std::array<bool, 18> { false, true, false, true, false, false, false, false, false, true, true, false, false, false, false, false, false, false });
         break;
 
     case 7:
         //                                 hs2   rmz     ...    dt    ycr   limp    np    kaf   act9   nap   price  volcan  hill  majon   hs1  torture
-        setMapList(std::array<bool, 16> { true, false, false, false, false, true, false, false, false, false, false, true, false, true, false, false });
+        setMapList(std::array<bool, 18> { true, false, false, false, false, true, false, false, false, false, false, true, false, true, false, false, false, false });
         break;
     }
 }
@@ -233,10 +255,10 @@ void MainWindow::on_mapSetOpen_clicked()
     }
 
     QJsonArray jObj = json.array();
-    std::array<bool, 16> arr;
+    std::array<bool, 18> arr;
 
     int i = 0;
-    for(auto it : jObj)
+    for(auto& it : jObj)
     {
         if(!it.isBool())
         {
@@ -308,6 +330,62 @@ void MainWindow::on_playersContextMenu(const QPoint& point)
     contextMenu.exec(ui->players->mapToGlobal(point));
 }
 
+void MainWindow::on_mapsContextMenu(const QPoint& point)
+{
+    QMenu contextMenu("Maplist Actions", this);
+
+    QAction action1("Check all", this);
+    connect(&action1, SIGNAL(triggered()), this, SLOT(on_mapsCheckAll()));
+    contextMenu.addAction(&action1);
+
+    QAction action2("Uncheck all", this);
+    connect(&action2, SIGNAL(triggered()), this, SLOT(on_mapsUncheckAll()));
+    contextMenu.addAction(&action2);
+
+    contextMenu.setTitle("Maplist Actions");
+    contextMenu.exec(ui->mapSet->mapToGlobal(point));
+}
+
+void MainWindow::on_mapsCheckAll()
+{
+    for(int i = 0; i < ui->mapSet->count(); ++i)
+    {
+        QListWidgetItem* item = ui->mapSet->item(i);
+        item->setCheckState(Qt::Checked);
+    }
+
+    ui->comboBox->setCurrentIndex(8);
+    queueEvent(PollData { 0, PollData::POLL_CLEAR_EXCLUDES });
+
+    for(quint16 i = 0; i < ui->mapSet->count(); i++)
+    {
+        QListWidgetItem* item = ui->mapSet->item(i);
+
+        if(item->checkState() == Qt::Unchecked)
+            queueEvent(PollData { i , PollData::POLL_ADD_EXCLUDE });
+    }
+}
+
+void MainWindow::on_mapsUncheckAll()
+{
+    for(int i = 0; i < ui->mapSet->count(); ++i)
+    {
+        QListWidgetItem* item = ui->mapSet->item(i);
+        item->setCheckState(Qt::Unchecked);
+    }
+
+    ui->comboBox->setCurrentIndex(8);
+    queueEvent(PollData { 0, PollData::POLL_CLEAR_EXCLUDES });
+
+    for(quint16 i = 0; i < ui->mapSet->count(); i++)
+    {
+        QListWidgetItem* item = ui->mapSet->item(i);
+
+        if(item->checkState() == Qt::Unchecked)
+            queueEvent(PollData { i , PollData::POLL_ADD_EXCLUDE });
+    }
+}
+
 void MainWindow::on_player_kick()
 {
     for(auto it : ui->players->selectedItems())
@@ -376,5 +454,11 @@ void MainWindow::on_exeWin_clicked()
 void MainWindow::on_pushButton_2_clicked()
 {
     queueEvent({ 0, PollData::POLL_SURVWIN });
+}
+
+
+void MainWindow::on_pushButton_clicked()
+{
+    queueEvent({ 0, PollData::POLL_PRACTICE });
 }
 

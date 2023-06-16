@@ -24,9 +24,11 @@ namespace BetterServer.UI
             Terminal.Log($"BUILD v{Program.BUILD_VER}");
             Terminal.Log("(c) Team Exe Empire 2023");
             Terminal.Log("===================");
-            Terminal.Log("Enter 127.0.0.1 on your PC to join your server.\n");
+            Terminal.Log("Enter localhost or 127.0.0.1 on your PC to join the server.\n");
 
             // Load mlist from config
+            // didnt test any of this bullshit should worj probably
+
             string? file = Options.Get<string>("mapset_file");
 
             if(!string.IsNullOrEmpty(file))

@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 
 namespace BetterServer.UI
 {
-
     public class UIWrapper
     {
         public enum PollType
@@ -18,7 +17,8 @@ namespace BetterServer.UI
             POLL_UNBAN,
             POLL_BACKTOLOBBY,
             POLL_EXEWIN,
-            POLL_SURVWIN
+            POLL_SURVWIN,
+            POLL_PRACTICE
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

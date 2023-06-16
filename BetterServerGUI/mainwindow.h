@@ -24,7 +24,7 @@ public:
     bool pollEvents(PollData* data);
     void queueEvent(PollData data);
     void log(QString string);
-    void setMapList(std::array<bool, 16> array);
+    void setMapList(std::array<bool, 18> array);
     void setPlayerState(PlayerData data);
     void addBan(QString name, QString ip);
 
@@ -39,17 +39,19 @@ private slots:
     void on_mapSetSave_clicked();
 
     void on_playersContextMenu(const QPoint &);
+    void on_mapsContextMenu(const QPoint &);
 
+    void on_mapsCheckAll();
+    void on_mapsUncheckAll();
     void on_player_kick();
     void on_player_ban();
 
     void on_banListDelete_clicked();
-
     void on_backToLobby_clicked();
-
     void on_exeWin_clicked();
-
     void on_pushButton_2_clicked();
+
+    void on_pushButton_clicked();
 
 private:
     void resetMapList();

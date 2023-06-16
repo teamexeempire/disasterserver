@@ -140,9 +140,18 @@ namespace BetterServer.Session
 
                             try
                             {
-                                _server.State.PeerTCPMessage(_server, this, reader);
+                                if (data.Length > 256)
+                                {
+                                    Terminal.LogDiscord("TCP overload (data.Length > 256)");
+                                    _server.DisconnectWithReason(this, "Packet overload > 256");
+                                }
+                                else
+                                    _server.State.PeerTCPMessage(_server, this, reader);
                             }
-                            catch { }
+                            catch(Exception e)
+                            {
+                                OnError(e.Message);
+                            }
                             _length = -1;
                             _data.Clear();
                         }
@@ -173,7 +182,7 @@ namespace BetterServer.Session
         protected override void OnError(string message)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
-            Terminal.LogDiscord($"Caught SocketError: {message}");
+            Terminal.LogDiscord($"Caught Error: {message}");
 
             base.OnError(message);
         }

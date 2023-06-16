@@ -21,7 +21,7 @@ namespace BetterServer.Entities
         public override TcpPacket? Spawn(Server server, Game game, Map map)
         {
             ID = map.RingIDs++;
-            IsRedRing = _rand.Next(100) <= 10;
+            IsRedRing = map.CanSpawnRedRings() && _rand.Next(100) <= 10;
 
             return new TcpPacket
             (

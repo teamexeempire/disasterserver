@@ -42,5 +42,8 @@ namespace BetterServer.Data
         public bool IsHurt = false;
         public bool HasRedRing = false;
         public bool CanDemonize = false;
+        public bool Invisible = false;
+
+        public double X, Y;
     }
 }

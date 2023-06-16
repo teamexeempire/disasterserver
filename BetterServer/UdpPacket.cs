@@ -11,7 +11,7 @@ namespace BetterServer
     {
         public int Length { get; private set; }
         
-        private byte[] _buffer = new byte[96]; //i never exceed 64 anyways
+        private byte[] _buffer = new byte[128]; //i never exceed 64 anyways
         private int _position = 0;
 
         public UdpPacket(PacketType type, params dynamic[] args)

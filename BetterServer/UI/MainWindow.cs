@@ -1,4 +1,5 @@
 using BetterServer.Data;
+using BetterServer.Maps;
 using BetterServer.Session;
 using BetterServer.State;
 using System.Security.Cryptography;
@@ -40,6 +41,8 @@ namespace BetterServer.UI
 
         public override bool Run()
         {
+            //TODO: test on linuk
+
             try
             {
                 if (!UIWrapper.gui_run(_Ready))
@@ -58,7 +61,7 @@ namespace BetterServer.UI
 
                             case UIWrapper.PollType.POLL_CLEAR_EXCLUDES:
                                 MapVote.Excluded.Clear();
-                                MapVote.Excluded.Add(16);
+                                MapVote.Excluded.Add(18);
                                 break;
 
                             case UIWrapper.PollType.POLL_ADD_EXCLUDE:
@@ -125,6 +128,20 @@ namespace BetterServer.UI
                                     }
                                 }
                                 break;
+
+                            case UIWrapper.PollType.POLL_PRACTICE:
+                                foreach (var server in Program.Servers)
+                                {
+                                    lock (server.Peers)
+                                    {
+                                        if (server.Peers.Count <= 0)
+                                            continue;
+                                    }
+
+                                    if (server.State.AsState() == Session.State.LOBBY)
+                                        server.SetState(new CharacterSelect(new FartZone()));
+                                }
+                                break;
                         }
                     }
 
@@ -134,8 +151,9 @@ namespace BetterServer.UI
                 Environment.Exit(0);
                 return true;
             }
-            catch(Exception e)
+            catch(Exception e) // i bet someone will reach this cuz they didnt extract the launcher.
             {
+                Console.WriteLine(e);
                 return false;
             }
         }
@@ -149,7 +167,7 @@ namespace BetterServer.UI
                 Terminal.Log($"BUILD v{Program.BUILD_VER}");
                 Terminal.Log("(c) Team Exe Empire 2023");
                 Terminal.Log("===================");
-                Terminal.Log("Enter 127.0.0.1 on your PC to join your server.\n");
+                Terminal.Log("Enter localhost or 127.0.0.1 on your PC to join the server.\n");
 
                 for (var i = 0; i < Options.Get<int>("server_count"); i++)
                 {
@@ -159,9 +177,7 @@ namespace BetterServer.UI
                 }
 
                 foreach (var it in BanList.GetBanned())
-                {
                     UIWrapper.gui_add_ban(it.Value, it.Key);
-                }
             }
             catch { }
         }

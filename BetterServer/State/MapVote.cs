@@ -34,12 +34,14 @@ namespace BetterServer.State
             typeof(MajinForest),
             typeof(AngelIsland),
             typeof(TortureCave),
+            typeof(DarkTower),
+            typeof(HauntingDream),
 
             /* whaaar */
             typeof(FartZone)
         };
 
-        public static List<int> Excluded = new() { 16 };
+        public static List<int> Excluded = new() { 18 };
 
         private MapVoteMap[] _votes = new MapVoteMap[]
         {

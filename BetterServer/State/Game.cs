@@ -110,19 +110,9 @@ namespace BetterServer.State
                 {
                     case PacketType.CLIENT_PING:
                         {
-                            lock (IPEndPoints)
-                            {
-                                if (!IPEndPoints.ContainsKey(pid))
-                                {
-                                    Terminal.LogDebug($"Received from {endpoint}");
-                                    IPEndPoints.Add(pid, endpoint);
-
-                                    lock (_packetTimeouts)
-                                        _packetTimeouts[pid] = -1;
-                                }
-                            }
-
+                            Terminal.LogDebug($"Ping-pong with {endpoint} (PID {pid})");
                             var pk = new UdpPacket(PacketType.SERVER_PONG);
+                            pk.Write(reader.ReadUInt64());
                             server.UDPSend(endpoint, pk);
                             break;
                         }
@@ -131,6 +121,35 @@ namespace BetterServer.State
                         {
                             if (!_waiting)
                             {
+                                var id = reader.ReadUInt16();
+                                var x = reader.ReadSingle();
+                                var y = reader.ReadSingle();
+                                
+                                lock(server.Peers)
+                                {
+                                    if(server.Peers.TryGetValue(id, out Peer? value))
+                                    {
+                                        if (value != null)
+                                        {
+                                            if (value.Player.Character == Character.Exe && value.Player.ExeCharacter == ExeCharacter.Original)
+                                            {
+                                                _ = reader.ReadByte(); // state
+                                                _ = reader.ReadInt16(); // angle
+                                                _ = reader.ReadByte(); // index
+                                                _ = reader.ReadSByte(); // scale 
+                                                _ = reader.ReadByte(); // effect time
+                                                _ = reader.ReadByte(); // attacking
+                                                _ = reader.ReadByte(); // hurttime
+                                                value.Player.Invisible = reader.ReadBoolean(); // invisible
+                                            }
+
+                                            value.Player.X = x;
+                                            value.Player.Y = y;
+                                        }
+                                    }
+                                }
+
+                                reader.BaseStream.Position = 3;
                                 var pack = new UdpPacket(type);
                                 while (reader.BaseStream.Position < reader.BaseStream.Length)
                                     pack.Write(reader.ReadByte());
@@ -148,7 +167,7 @@ namespace BetterServer.State
                     {
                         if (!IPEndPoints.ContainsKey(pid))
                         {
-                            Terminal.LogDebug($"Received from {endpoint}");
+                            Terminal.LogDebug($"Received from {endpoint} (PID {pid})");
                             IPEndPoints.Add(pid, endpoint);
 
                             lock(_packetTimeouts)
@@ -181,7 +200,7 @@ namespace BetterServer.State
             }
             catch (Exception e)
             {
-                Terminal.LogDebug($"Exception from {endpoint} UDP: {e}");
+                Terminal.LogDebug($"PeerUDPMessage() failed for {endpoint}: {e}");
             }
         }
 
@@ -243,7 +262,7 @@ namespace BetterServer.State
                             continue;
 
                         if (_packetTimeouts[pair.Key]-- <= 0)
-                            server.DisconnectWithReason(server.GetSession(pair.Key), "UDP packets didnt arive in time");
+                            server.DisconnectWithReason(server.GetSession(pair.Key), "UDP packets didnt arrive in time");
                     }
                 }
                 return;
@@ -314,6 +333,9 @@ namespace BetterServer.State
 
             switch ((PacketType)type)
             {
+                case PacketType.CLIENT_PLAYER_PALLETE:
+                    break;
+
                 /* If player dies */
                 case PacketType.CLIENT_PLAYER_DEATH_STATE:
                     {

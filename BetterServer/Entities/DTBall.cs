@@ -9,12 +9,10 @@ using System.Threading.Tasks;
 
 namespace BetterServer.Entities
 {
-    internal class TCGom : Entity
+    public class DTBall : Entity
     {
-        private int _timer = 4 * Ext.FRAMESPSEC;
-        private int _id = 0;
-        private bool _state = false;
-        private Random _rand = new();
+        private double _state = 0;
+        private bool _side = true;
 
         public override TcpPacket? Destroy(Server server, Game game, Map map)
         {
@@ -28,18 +26,22 @@ namespace BetterServer.Entities
 
         public override UdpPacket? Tick(Server server, Game game, Map map)
         {
-            if(_timer-- <= 0)
+            if (_side)
             {
-                _timer = 4 * Ext.FRAMESPSEC;
-                _state = !_state;
+                _state += 0.015f;
 
-                if (_state)
-                    _id = _rand.Next(7);
+                if (_state >= 1)
+                    _side = false;
+            }
+            else
+            {
+                _state -= 0.015f;
 
-                server.TCPMulticast(new TcpPacket(PacketType.SERVER_TCGOM_STATE, (byte)_id, _state));
+                if (_state <= -1)
+                    _side = true;
             }
 
-            return null;
+            return new UdpPacket(PacketType.SERVER_DTBALL_STATE, (float)_state);
         }
     }
 }

@@ -6,6 +6,7 @@ namespace BetterServer.Session
 {
     /// <summary>
     /// Server used for important packets (Time sync, entity destruction, etc)
+    /// 
     /// </summary>
     public class SharedServer : TcpServer
     {
@@ -35,7 +36,7 @@ namespace BetterServer.Session
         protected override void OnError(string message)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
-            Terminal.LogDiscord($"Caught Exception: {message}");
+            Terminal.LogDiscord($"Caught Error: {message}");
 
             base.OnError(message);
         }

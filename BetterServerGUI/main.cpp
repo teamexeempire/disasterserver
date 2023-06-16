@@ -14,6 +14,7 @@ extern "C"
     #ifndef WIN32 // or something like that...
     #define __stdcall
     #endif
+
     typedef void (__stdcall *ReadyCallback)(void);
 
     EXPORT bool gui_poll_events(PollData* data)

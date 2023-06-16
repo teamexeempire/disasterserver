@@ -150,27 +150,28 @@ namespace BetterServer.Maps
                     {
                         var _x = reader.ReadUInt16();
                         var _y = reader.ReadUInt16();
-                        var _cnt = reader.ReadByte();
                         var _redRing = reader.ReadBoolean();
 
-                        for (var i = 0; i < _cnt; i++)
+                        if (_redRing)
                         {
-                            if (_redRing)
+                            for (var i = 0; i < 2; i++)
                             {
                                 Spawn(server, new CreamRing()
                                 {
-                                    X = (int)(_x + Math.Sin(Math.PI * 2.5 - (i * Math.PI)) * 26),
+                                    X = (int)(_x + Math.Sin(Math.PI * 2.5 - (i * Math.PI)) * 26) - 1,
                                     Y = (int)(_y + Math.Cos(Math.PI * 2.5 - (i * Math.PI)) * 26),
                                     IsRedRing = true
                                 });
                             }
-                            else
+                        }
+                        else
+                        {
+                            for (var i = 0; i < 3; i++)
                             {
-
                                 Spawn(server, new CreamRing()
                                 {
-                                    X = (int)(_x + Math.Sin(Math.PI * 2.5 + (i * (Math.PI / 3))) * 26),
-                                    Y = (int)(_y + Math.Cos(Math.PI * 2.5 + (i * (Math.PI / 3))) * 26),
+                                    X = (int)(_x + Math.Sin(Math.PI * 2.5 + (i * (Math.PI / 2))) * 26),
+                                    Y = (int)(_y + Math.Cos(Math.PI * 2.5 + (i * (Math.PI / 2))) * 26),
                                     IsRedRing = false
                                 });
                             }
@@ -257,7 +258,7 @@ namespace BetterServer.Maps
 
                         var clone = clones.Where(e => e.ID == uid).FirstOrDefault();
                         if (clone == null)
-                            break;  
+                            break;
 
                         Destroy(server, clone);
                         break;
@@ -437,16 +438,15 @@ namespace BetterServer.Maps
             }
         }
 
+        public virtual bool CanSpawnRedRings() => true;
+
         protected virtual int GetPlayerOffset(Server server)
         {
             lock (server.Peers)
                 return (server.Peers.Count - 1) * 20;
         }
 
-        protected virtual float GetRingTime()
-        {
-            return 5.0f;
-        }
+        protected virtual float GetRingTime() => 5.0f;
 
         protected abstract int GetRingSpawnCount();
     }

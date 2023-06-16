@@ -74,7 +74,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Terminal.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"TCPSend() Exception: {e}");
             }
         }
 
@@ -105,7 +105,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Terminal.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"TCPMulticast() Exception: {e}");
             }
         }
 
@@ -121,7 +121,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Terminal.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"UDPSend() Exception: {e}");
             }
         }
 
@@ -147,7 +147,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Terminal.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"UDPMulticast() Exception: {e}");
             }
         }
 
@@ -173,7 +173,7 @@ namespace BetterServer.Session
             }
             catch (Exception e)
             {
-                Terminal.LogDiscord($"Exception: {e}");
+                Terminal.LogDiscord($"UDPMulticast() Exception: {e}");
             }
         }
 
@@ -209,6 +209,8 @@ namespace BetterServer.Session
             if (!session.IsRunning)
                 return;
 
+            // TODO: check why the fuck im doing this
+
             // Disconnection is handled on another thread since we don't want to deadlock server
             ThreadPool.QueueUserWorkItem((s) =>
             {
@@ -238,7 +240,7 @@ namespace BetterServer.Session
                     TCPSend(session, pk);
                     session.Disconnect();
                 }
-                catch (Exception e) { Terminal.LogDiscord(e.Message); }
+                catch (Exception e) { Terminal.LogDiscord($"Disconnect failed: {e}"); }
             });
         }
 

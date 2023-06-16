@@ -1,4 +1,6 @@
-﻿using BetterServer.Session;
+﻿using BetterServer.Entities;
+using BetterServer.Session;
+using ExeNet;
 using System;
 using System.Collections.Generic;
 using System.Linq;

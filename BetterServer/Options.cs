@@ -19,7 +19,7 @@ namespace BetterServer
             _path = "Config/Options.json";
             try
             {
-                if(Environment.GetCommandLineArgs().Length > 1)
+                if(Environment.GetCommandLineArgs().Length > 1) //hakc to load config from cmd
                     _path = Environment.GetCommandLineArgs()[1];
 
                 if (!File.Exists(_path))

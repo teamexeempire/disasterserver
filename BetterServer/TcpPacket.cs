@@ -10,7 +10,7 @@ namespace BetterServer
     {
         public int Length { get; private set; }
 
-        private byte[] _buffer = new byte[96]; //i never exceed 64 anyways
+        private byte[] _buffer = new byte[256]; //i never exceed 64 anyways
         private int _position = 0;
 
         public TcpPacket(PacketType type, params dynamic[] args)
