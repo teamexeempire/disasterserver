@@ -34,7 +34,7 @@ namespace BetterServer.Data
         public ExeCharacter ExeCharacter = ExeCharacter.None;
 
         public int RevivalTimes = 0;
-        public int DeadTimer = -1;
+        public float DeadTimer = -1;
         public bool DiedBefore = false;
         public bool HasEscaped = false;
         public bool IsReady = false;

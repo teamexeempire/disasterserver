@@ -31,5 +31,9 @@ namespace BetterServer
             return (T?)Activator.CreateInstance(value);
         }
 
+        public static double Dist(double x, double y, double x2, double y2)
+        {
+            return Math.Sqrt(Math.Pow(x2 - x, 2) + Math.Pow(y2 - y, 2));
+        }
     }
 }

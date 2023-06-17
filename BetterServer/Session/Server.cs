@@ -8,8 +8,8 @@ namespace BetterServer.Session
 {
     public class Server
     {
-        private const int TCP_PORT = 7606;
-        private const int UDP_PORT = 8606;
+        private const int TCP_PORT = 26684;
+        private const int UDP_PORT = 38802;
 
         /* Status */
         public int UID = -1;

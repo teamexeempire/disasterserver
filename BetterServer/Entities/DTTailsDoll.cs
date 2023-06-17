@@ -135,7 +135,7 @@ namespace BetterServer.Entities
                 {
                     foreach (var player in server.Peers.Values)
                     {
-                        double dist = Dist(player.Player.X, player.Player.Y, p.X, p.Y);
+                        double dist = Ext.Dist(player.Player.X, player.Player.Y, p.X, p.Y);
 
                         if (dist < 480)
                         {
@@ -162,11 +162,6 @@ namespace BetterServer.Entities
                     Terminal.LogDebug($"Tails doll didn't find a spot, using ({point.X}, {point.Y})");
                 }
             }
-        }
-
-        private double Dist(double x, double y, double x2, double y2)
-        {
-            return Math.Sqrt(Math.Pow(x2 - x, 2) + Math.Pow(y2 - y, 2));
         }
     }
 }

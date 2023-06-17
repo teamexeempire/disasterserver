@@ -124,8 +124,15 @@ namespace BetterServer.State
                                 var id = reader.ReadUInt16();
                                 var x = reader.ReadSingle();
                                 var y = reader.ReadSingle();
-                                
-                                lock(server.Peers)
+
+                                var pack = new UdpPacket(type);
+                                while (reader.BaseStream.Position < reader.BaseStream.Length)
+                                    pack.Write(reader.ReadByte());
+
+                                server.UDPMulticast(ref IPEndPoints, pack, endpoint);
+                                reader.BaseStream.Position = 3;
+
+                                lock (server.Peers)
                                 {
                                     if(server.Peers.TryGetValue(id, out Peer? value))
                                     {
@@ -148,13 +155,6 @@ namespace BetterServer.State
                                         }
                                     }
                                 }
-
-                                reader.BaseStream.Position = 3;
-                                var pack = new UdpPacket(type);
-                                while (reader.BaseStream.Position < reader.BaseStream.Length)
-                                    pack.Write(reader.ReadByte());
-
-                                server.UDPMulticast(ref IPEndPoints, pack, endpoint);
                             }
                             break;
                         }
@@ -205,8 +205,9 @@ namespace BetterServer.State
         }
 
         public override void UDPSocketError(IPEndPoint endpoint, SocketError error)
-        {            
-            lock(IPEndPoints)
+        {
+            Terminal.LogDebug($"Removing {endpoint}: {error}");
+            lock (IPEndPoints)
             {
                 var item = IPEndPoints.FirstOrDefault(kvp => kvp.Value == endpoint);
                 IPEndPoints.Remove(item.Key);
@@ -492,7 +493,7 @@ namespace BetterServer.State
                         server.TCPMulticast(pk);
                     }
 
-                    peer.Player.DeadTimer--;
+                    peer.Player.DeadTimer -= (Ext.Dist(peer.Player.X, peer.Player.Y, server.Peers[_exeId].Player.X, server.Peers[_exeId].Player.Y) >= 240 ? 1f : 0.5f);
                     if (peer.Player.DeadTimer <= 0 || _map.Timer <= Ext.FRAMESPSEC * Ext.FRAMESPSEC * 2)
                     {
                         var pkt = new TcpPacket(PacketType.SERVER_GAME_DEATHTIMER_END);

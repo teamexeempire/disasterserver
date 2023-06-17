@@ -60,7 +60,7 @@ namespace BetterServer.Entities
             }
             else
             {
-                server.TCPMulticast(new TcpPacket(PacketType.SERVER_PFLIFT_STATE, (byte)2, (byte)ID, (ushort)ActivatorID));
+                server.TCPMulticast(new TcpPacket(PacketType.SERVER_PFLIFT_STATE, (byte)2, (byte)ID, (ushort)ActivatorID, (ushort)_y));
                 _timer = (int)(1.5 * Ext.FRAMESPSEC);
                 _activated = false;
                 ActivatorID = 0;
