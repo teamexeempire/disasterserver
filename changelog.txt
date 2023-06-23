@@ -1,8 +1,8 @@
-Version 326
+\Version /326~
 
 -extras, skirs and iporns
--\mercoins~
--@eggman buf~
--|saly shild nerf~
--/anticapm systems~
--№bub fixes~
+-mercoins
+-eggman buf
+-saly shild nerf
+-anticapm systems
+-bub fixes
