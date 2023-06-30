@@ -40,7 +40,6 @@ namespace BetterServer.Maps
         };
 
         private Dictionary<ushort, byte> _playersShardCount = new();
-        private Dictionary<ushort, Vector2> _playerPos = new();
         private Random _rand = new();
         private int _ringLoc = 0;
 
@@ -61,7 +60,6 @@ namespace BetterServer.Maps
             {
                 foreach (var peer in server.Peers)
                 {
-                    _playerPos.Add(peer.Key, new());
                     _playersShardCount.Add(peer.Key, 0);
                 }
             }
@@ -81,16 +79,15 @@ namespace BetterServer.Maps
         {
             lock (_playersShardCount)
             {
-                lock (_playerPos)
+                lock (server.Peers)
                 {
                     lock (Entities)
                     {
                         for (var i = 0; i < _playersShardCount[session.ID]; i++)
-                            Spawn(server, new RMZShard(_playerPos[session.ID].X + _rand.Next(-8, 8), _playerPos[session.ID].Y, true));
+                            Spawn(server, new RMZShard((int)(peer.Player.X + _rand.Next(-8, 8)), (int)peer.Player.Y, true));
                     }
 
                     _playersShardCount.Remove(session.ID);
-                    _playerPos.Remove(session.ID);
                 }
             }
 
@@ -116,10 +113,10 @@ namespace BetterServer.Maps
                             {
                                 lock (_playersShardCount)
                                 {
-                                    lock (_playerPos)
+                                    lock (server.Peers)
                                     {
                                         for (var i = 0; i < _playersShardCount[session.ID]; i++)
-                                            Spawn(server, new RMZShard(_playerPos[session.ID].X + _rand.Next(-8, 8), _playerPos[session.ID].Y, true));
+                                            Spawn(server, new RMZShard((int)(server.Peers[session.ID].Player.X + _rand.Next(-8, 8)), (int)server.Peers[session.ID].Player.Y, true));
 
                                         _playersShardCount[session.ID] = 0;
                                     }
@@ -192,26 +189,9 @@ namespace BetterServer.Maps
             base.PeerTCPMessage(server, session, reader);
         }
 
-        public override void PeerUDPMessage(Server server, IPEndPoint endpoint, BinaryReader reader)
+        public override void PeerUDPMessage(Server server, IPEndPoint endpoint, byte[] data)
         {
-            var pid = reader.ReadUInt16();
-
-            switch ((PacketType)reader.ReadByte())
-            {
-                case PacketType.CLIENT_PLAYER_DATA:
-                    pid = reader.ReadUInt16();
-                    float x = reader.ReadSingle();
-                    float y = reader.ReadSingle();
-
-                    lock (_playerPos)
-                    {
-                        _playerPos[pid].X = (int)x;
-                        _playerPos[pid].Y = (int)y;
-                    }
-                    break;
-            }
-
-            base.PeerUDPMessage(server, endpoint, reader);
+            base.PeerUDPMessage(server, endpoint, data);
         }
 
         protected override void DoBigRingTimer(Server server)

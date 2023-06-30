@@ -41,7 +41,7 @@ namespace BetterServer.Session
             base.OnError(endpoint, message);
         }
 
-        protected override void OnData(IPEndPoint sender, byte[] data)
+        protected override void OnData(IPEndPoint sender, ref byte[] data)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
 
@@ -51,11 +51,9 @@ namespace BetterServer.Session
                 return;
             }
             
-            using var stream = new MemoryStream(data, 0, data.Length, false);
-            using var reader = new BinaryReader(stream);
-            _server.State.PeerUDPMessage(_server, sender, reader);
+            _server.State.PeerUDPMessage(_server, sender, ref data);
 
-            base.OnData(sender, data);
+            base.OnData(sender, ref data);
         }
     }
 }

@@ -146,6 +146,8 @@ namespace BetterServer.State
                                 pk.Write(player.Value.ID);
                                 pk.Write(player.Value.Player.IsReady);
                                 pk.Write(player.Value.Nickname[..Math.Min(player.Value.Nickname.Length, 15)]);
+                                pk.Write(player.Value.Icon);
+                                pk.Write(player.Value.Pet);
 
                                 server.TCPSend(session, pk);
                             }
@@ -170,19 +172,28 @@ namespace BetterServer.State
                         lock (server.Peers)
                         {
                             var name = reader.ReadStringNull();
+                            var icon = reader.ReadByte();
+                            var pet = reader.ReadSByte();
+
                             if (server.Peers.ContainsKey(session.ID))
                             {
                                 server.Peers[session.ID].Pending = false;
-                                server.Peers[session.ID].Nickname = name;
+                                server.Peers[session.ID].Nickname = Ext.ValidateNick(name);
+                                server.Peers[session.ID].Icon = icon;
+                                server.Peers[session.ID].Pet = pet;
 
                                 Terminal.LogDiscord($"{name} (ID {server.Peers[session.ID].ID}) joined.");
                                 packet.Write(server.Peers[session.ID].ID);
                                 packet.Write(name);
+                                packet.Write(icon);
+                                packet.Write(pet);
 
                                 Program.Window.AddPlayer(server.Peers[session.ID]);
                             }
                         }
                         server.TCPMulticast(packet, session.ID);
+
+                        Program.Stat?.MulticastInformation();
                     }
                     break;
 
@@ -370,7 +381,7 @@ namespace BetterServer.State
         }
 
         /* Lobby has no UDP messages */
-        public override void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, BinaryReader reader)
+        public override void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, ref byte[] data)
         {
         }
 
@@ -395,6 +406,8 @@ namespace BetterServer.State
 
             var pk = new TcpPacket(PacketType.SERVER_GAME_BACK_TO_LOBBY);
             server.TCPMulticast(pk);
+
+            Program.Stat?.MulticastInformation();
         }
 
         public override void Tick(Server server)
@@ -563,6 +576,8 @@ namespace BetterServer.State
                 Terminal.LogDiscord($"Vote kick succeeded for {server.Peers[_voteKickTarget].Nickname} (PID {_voteKickTarget})");
 
                 var session = server.GetSession(_voteKickTarget);
+                KickList.Add((session.RemoteEndPoint! as IPEndPoint).Address.ToString()!);
+
                 server.DisconnectWithReason(session, "Vote kick.");
                 SendMessage(server, $"@kick vote success~ (@{totalFor}~ vs \\{totalAgainst}~)");
                 _voteKickVotes.Clear();

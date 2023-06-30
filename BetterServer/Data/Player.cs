@@ -44,6 +44,13 @@ namespace BetterServer.Data
         public bool CanDemonize = false;
         public bool Invisible = false;
 
-        public double X, Y;
+        /* Data loss */
+        public float LossCount = 0;
+        public long LastLostTime = 0;
+
+        public float X, Y;
+        public float BacktrackX, BacktrackY;
+        public bool Backtrack;
+        public int BacktrackTick;
     }
 }

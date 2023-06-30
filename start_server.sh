@@ -1,4 +1,4 @@
 cd BetterServer
-dotnet build
-cd bin/Debug/net7.0/
+dotnet build --configuration Release
+cd bin/Release/net7.0/
 nohup ./BetterServer /root/Config.json > /root/server.log 2>&1 &

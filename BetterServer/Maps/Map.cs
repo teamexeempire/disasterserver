@@ -74,7 +74,7 @@ namespace BetterServer.Maps
         {
         }
 
-        public virtual void PeerUDPMessage(Server server, IPEndPoint endpoint, BinaryReader reader)
+        public virtual void PeerUDPMessage(Server server, IPEndPoint endpoint, byte[] data)
         {
         }
 

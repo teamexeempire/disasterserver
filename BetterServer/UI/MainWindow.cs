@@ -2,6 +2,7 @@ using BetterServer.Data;
 using BetterServer.Maps;
 using BetterServer.Session;
 using BetterServer.State;
+using System.Net;
 using System.Security.Cryptography;
 
 namespace BetterServer.UI
@@ -77,6 +78,7 @@ namespace BetterServer.UI
                                         continue;
 
                                     server.DisconnectWithReason(session, "Kicked by server.");
+                                    KickList.Add((session.RemoteEndPoint! as IPEndPoint).Address.ToString()!);
                                 }
                                 break;
 

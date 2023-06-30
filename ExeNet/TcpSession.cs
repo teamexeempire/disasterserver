@@ -12,8 +12,9 @@ namespace ExeNet
     {
         public ushort ID;
 
-        public bool IsRunning { get; private set; }
         public int ReadBufferSize { get; private set; } = 96;
+        public bool IsRunning { get; private set; } = false;
+
         public EndPoint? RemoteEndPoint
         {
             get
@@ -42,7 +43,6 @@ namespace ExeNet
         protected TcpServer Server { get; private set; }
 
         private byte[] _readBuffer = Array.Empty<byte>();
-        private Thread? _readThread;
 
         public TcpSession(TcpServer server, TcpClient client)
         {
@@ -61,16 +61,8 @@ namespace ExeNet
             _readBuffer = new byte[ReadBufferSize];
 
             IsRunning = true;
-            try
-            {
-                _readThread = new(Run);
-                _readThread.Name = "TcpSession Worker";
-                _readThread.Start();
-            }
-            catch (Exception ex)
-            {
-                OnError(ex.Message);
-            }
+            OnConnected();
+            Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
         }
 
         public void Send(byte[] data) => Send(data, data.Length);
@@ -95,38 +87,18 @@ namespace ExeNet
 
         private void Stop()
         {
+            CleanUp();
+        }
+
+        private void CleanUp()
+        {
+            if (!IsRunning)
+                return;
+
             IsRunning = false;
-
-            if (_readThread == null)
-                return;
-
-            if (Environment.CurrentManagedThreadId == _readThread.ManagedThreadId)
-            {
-                ThreadPool.QueueUserWorkItem((ass) => Stop());
-                return;
-            }
-
-            try
-            {
-                _readThread.Join(3000);
-            }
-            catch (Exception ex)
-            {
-                OnError(ex.Message);
-            }
 
             if (Client.Connected)
                 Client.Close();
-        }
-
-        private void Run()
-        {
-            OnConnected();
-
-            Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
-            
-            while (IsRunning)
-                Thread.Sleep(100);
 
             OnDisconnected();
 
@@ -136,7 +108,6 @@ namespace ExeNet
                     Server.Sessions.Remove(this);
             }
         }
-
 
         private void DoSend(IAsyncResult result)
         {
@@ -155,24 +126,24 @@ namespace ExeNet
                     case SocketError.ConnectionRefused:
                     case SocketError.ConnectionReset:
                     case SocketError.ConnectionAborted:
-                        IsRunning = false;
+                        CleanUp();
                         break;
 
                     default:
                         if (length <= 0)
                         {
-                            IsRunning = false;
+                            CleanUp();
                             break;
                         }
 
                         OnSocketError(code);
-                        IsRunning = false;
+                        CleanUp();
                         break;
 
                     case SocketError.Success:
                         if (length <= 0)
                         {
-                            IsRunning = false;
+                            CleanUp();
                             break;
                         }
                         break;
@@ -190,9 +161,12 @@ namespace ExeNet
             {
                 if (!Client.Connected)
                 {
-                    IsRunning = false;
+                    CleanUp();
                     return;
                 }
+
+                if (!IsRunning)
+                    return;
 
                 int length = Client.Client.EndReceive(result, out SocketError code);
 
@@ -207,24 +181,24 @@ namespace ExeNet
                     case SocketError.ConnectionRefused:
                     case SocketError.ConnectionReset:
                     case SocketError.ConnectionAborted:
-                        IsRunning = false;
+                        CleanUp();
                         return;
 
                     default:
                         if (length <= 0)
                         {
-                            IsRunning = false;
+                            CleanUp();
                             break;
                         }
 
                         OnSocketError(code);
-                        IsRunning = false;
+                        CleanUp();
                         return;
 
                     case SocketError.Success:
                         if (length <= 0)
                         {
-                            IsRunning = false;
+                            CleanUp();
                             return;
                         }
                         break;

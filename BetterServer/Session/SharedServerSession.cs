@@ -1,9 +1,7 @@
 ﻿using BetterServer.Data;
 using ExeNet;
-using System.Collections;
 using System.Net;
 using System.Net.Sockets;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BetterServer.Session
 {
@@ -11,8 +9,6 @@ namespace BetterServer.Session
     {
         private Server _server;
 
-        private object _recieveLock = new();
-        
         private List<byte> _header = new();
         private List<byte> _data = new();
         private int _length = -1;
@@ -31,7 +27,13 @@ namespace BetterServer.Session
 
             lock (_server.Peers)
             {
-                if(BanList.Check((RemoteEndPoint! as IPEndPoint).Address.ToString()!))
+                if (KickList.Check((RemoteEndPoint! as IPEndPoint).Address.ToString()!))
+                {
+                    _server.DisconnectWithReason(this, "Kicked by server.");
+                    return;
+                }
+
+                if (BanList.Check((RemoteEndPoint! as IPEndPoint).Address.ToString()!))
                 {
                     _server.DisconnectWithReason(this, "You were banned from this server.");
                     return;
@@ -91,6 +93,7 @@ namespace BetterServer.Session
                 Terminal.Log($"{peer?.EndPoint} (ID {peer?.ID}) disconnected.");
             }
 
+            Program.Stat?.MulticastInformation();
             base.OnDisconnected();
         }
 
@@ -110,65 +113,62 @@ namespace BetterServer.Session
 
         private void ProcessBytes(byte[] buffer, int length)
         {
-            lock (_recieveLock)
+            using var memStream = new MemoryStream(buffer, 0, length);
+
+            while (memStream.Position < memStream.Length)
             {
-                using var memStream = new MemoryStream(buffer, 0, length);
+                byte bt = (byte)memStream.ReadByte();
 
-                while(memStream.Position < memStream.Length)
+                if (_start)
                 {
-                    byte bt = (byte)memStream.ReadByte();
+                    _start = false;
+                    _length = bt;
+                    _data.Clear();
 
-                    if (_start)
+                    Terminal.LogDebug($"Packet start {_length}");
+                }
+                else
+                {
+                    _data.Add(bt);
+
+                    if (_data.Count >= _length && _length != -1)
                     {
-                        _start = false;
-                        _length = bt;
-                        _data.Clear();
+                        var data = _data.ToArray();
+                        using var stream = new MemoryStream(data);
+                        using var reader = new BinaryReader(stream);
 
-                        Terminal.LogDebug($"Packet start {_length}");
-                    }
-                    else
-                    {
-                        _data.Add(bt);
+                        Terminal.LogDebug($"Packet recv {BitConverter.ToString(data)}");
 
-                        if(_data.Count >= _length && _length != -1)
+                        try
                         {
-                            var data = _data.ToArray();
-                            using var stream = new MemoryStream(data);
-                            using var reader = new BinaryReader(stream);
-
-                            Terminal.LogDebug($"Packet recv {BitConverter.ToString(data)}");
-
-                            try
+                            if (data.Length > 256)
                             {
-                                if (data.Length > 256)
-                                {
-                                    Terminal.LogDiscord("TCP overload (data.Length > 256)");
-                                    _server.DisconnectWithReason(this, "Packet overload > 256");
-                                }
-                                else
-                                    _server.State.PeerTCPMessage(_server, this, reader);
+                                Terminal.LogDiscord("TCP overload (data.Length > 256)");
+                                _server.DisconnectWithReason(this, "Packet overload > 256");
                             }
-                            catch(Exception e)
-                            {
-                                OnError(e.Message);
-                            }
-                            _length = -1;
-                            _data.Clear();
+                            else
+                                _server.State.PeerTCPMessage(_server, this, reader);
                         }
+                        catch (Exception e)
+                        {
+                            OnError(e.Message);
+                        }
+                        _length = -1;
+                        _data.Clear();
                     }
-
-                    _header.Add(bt);
-                    if (_header.Count >= 6)
-                        _header.RemoveAt(0);
-
-                    // Now check header
-                    if (Enumerable.SequenceEqual(_header, _headerData))
-                        _start = true;
                 }
 
-                if(_data.Count < _length && _length != -1)
-                    Terminal.LogDebug($"Packet split, waiting for part to arrive.");
+                _header.Add(bt);
+                if (_header.Count >= 6)
+                    _header.RemoveAt(0);
+
+                // Now check header
+                if (Enumerable.SequenceEqual(_header, _headerData))
+                    _start = true;
             }
+
+            if (_data.Count < _length && _length != -1)
+                Terminal.LogDebug($"Packet split, waiting for part to arrive.");
         }
 
         protected override void OnSocketError(SocketError error)

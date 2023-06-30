@@ -64,22 +64,22 @@ namespace BetterServer.UI
         public delegate void ReadyCallback();
 
 #if _WINDOWS
-        [DllImport("UI/ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern bool gui_run([MarshalAs(UnmanagedType.FunctionPtr)] ReadyCallback cb);
 
-        [DllImport("UI/ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern bool gui_poll_events(out PollData data);
 
-        [DllImport("UI/ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern void gui_log(string text);
 
-        [DllImport("UI/ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern void gui_add_ban(string name, string ip);
 
-        [DllImport("UI/ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern void gui_set_status(string text);
 
-        [DllImport("UI/ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport("ServerGUI.dll", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern void gui_player_state(PlayerData data);
 
 
@@ -88,22 +88,22 @@ namespace BetterServer.UI
         public static extern bool AllocConsole();
 
 #else
-    [DllImport("UI/libServerGUI.so", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode)]
+    [DllImport("libServerGUI.so", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode)]
     public static extern bool gui_run(ReadyCallback cb);
 
-    [DllImport("UI/libServerGUI.so", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode)]
+    [DllImport("libServerGUI.so", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode)]
     public static extern bool gui_poll_events(out PollData data);
         
-    [DllImport("UI/libServerGUI.so", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode)]
+    [DllImport("libServerGUI.so", CallingConvention = CallingConvention.Winapi, CharSet = CharSet.Unicode)]
     public static extern void gui_log(string text);
 
-    [DllImport("UI/libServerGUI.so", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("libServerGUI.so", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern void gui_add_ban(string name, string ip);
 
-    [DllImport("UI/libServerGUI.so", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("libServerGUI.so", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern void gui_set_status(string text);
 
-    [DllImport("UI/libServerGUI.so", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
+    [DllImport("libServerGUI.so", CallingConvention = CallingConvention.Winapi, SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern void gui_player_state(PlayerData data);
 #endif    
     }

@@ -43,7 +43,7 @@ namespace BetterServer.State
         /// <param name="server"></param>
         /// <param name="IPEndPoint"></param>
         /// <param name="reader"></param>
-        public abstract void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, BinaryReader reader);
+        public abstract void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, ref byte[] data);
 
 
         /// <summary>

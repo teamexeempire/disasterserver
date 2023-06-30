@@ -43,7 +43,7 @@ namespace BetterServer.Entities
                         if (player.Player.RevivalTimes >= 2)
                             continue;
 
-                        double dist = Dist(player.Player.X, player.Player.Y, X, Y);
+                        double dist = Ext.Dist(player.Player.X, player.Player.Y, X, Y);
 
                         if (dist < 130)
                         {
@@ -66,7 +66,7 @@ namespace BetterServer.Entities
                         if (player.Player.RevivalTimes >= 2)
                             continue;
 
-                        double dist = Dist(player.Player.X, player.Player.Y, X, Y);
+                        double dist = Ext.Dist(player.Player.X, player.Player.Y, X, Y);
 
                         if (dist < 80)
                         {
@@ -83,7 +83,7 @@ namespace BetterServer.Entities
                     if((int)Math.Abs(plr.Y - Y) >= 2)
                         Y += Math.Sign((int)plr.Y - Y) * 2;
 
-                    if (Dist(plr.X, plr.Y, X, Y) < 18)
+                    if (Ext.Dist(plr.X, plr.Y, X, Y) < 18)
                     {
                         server.TCPSend(server.GetSession((ushort)_target), new TcpPacket(PacketType.SERVER_DTTAILSDOLL_STATE, (byte)1));
                         FindPost(server);

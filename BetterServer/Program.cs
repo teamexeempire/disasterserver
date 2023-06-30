@@ -7,10 +7,11 @@ namespace BetterServer
 {
     public class Program
     {
-        public const int BUILD_VER = 3251;
+        public const int BUILD_VER = 327;
         public const int MAX_PLAYERS = 7;
         public static List<Server> Servers { get; private set; } = new();
         public static Window Window { get; private set; }
+        public static StatServer? Stat { get; private set; }
 
         public static void Main(string[] args)
         {
@@ -26,8 +27,8 @@ namespace BetterServer
 
             if (Options.Get<bool>("enable_stat"))
             {
-                StatServer stat = new();
-                stat.Start();
+                Stat = new();
+                Stat.Start();
             }
 
             Window = Options.Get<bool>("console_mode") || Options.Get<int>("server_count") > 1 ? new CmdWindow() : new MainWindow();

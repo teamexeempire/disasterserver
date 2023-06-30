@@ -8,8 +8,8 @@ namespace BetterServer.Session
 {
     public class Server
     {
-        private const int TCP_PORT = 26684;
-        private const int UDP_PORT = 38802;
+        private const int TCP_PORT = 7606;
+        private const int UDP_PORT = 8606;
 
         /* Status */
         public int UID = -1;
@@ -88,9 +88,6 @@ namespace BetterServer.Session
                 {
                     foreach (var peer in Peers)
                     {
-                        if (peer.Value.Pending)
-                            continue;
-
                         if (peer.Key == except)
                             continue;
 
@@ -114,7 +111,7 @@ namespace BetterServer.Session
             try
             {
                 var arr = packet.ToArray();
-                MulticastServer.Send(IPEndPoint, arr, packet.Length);
+                MulticastServer.Send(IPEndPoint, ref arr, packet.Length);
             }
             catch (InvalidOperationException)
             {
@@ -138,7 +135,7 @@ namespace BetterServer.Session
                         if (IPEndPoint == except)
                             continue;
 
-                        MulticastServer.Send(IPEndPoint, arr, packet.Length);
+                        MulticastServer.Send(IPEndPoint, ref arr, packet.Length);
                     }
                 }
             }
@@ -164,7 +161,7 @@ namespace BetterServer.Session
                         if (IPEndPoint.Value == except)
                             continue;
 
-                        MulticastServer.Send(IPEndPoint.Value, arr, packet.Length);
+                        MulticastServer.Send(IPEndPoint.Value, ref arr, packet.Length);
                     }
                 }
             }

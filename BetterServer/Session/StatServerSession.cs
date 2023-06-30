@@ -29,7 +29,6 @@ namespace BetterServer.Session
             }
 
             Send(arr);
-            Disconnect();
             base.OnConnected();
         }
     }

@@ -63,7 +63,7 @@ namespace BetterServer.UI
                 Program.Servers.Add(server);
             }
 
-            while (true) ;
+            while (true) Thread.Sleep(1000);
         }
     }
 }

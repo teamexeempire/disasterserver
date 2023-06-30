@@ -1,11 +1,9 @@
 ﻿using BetterServer.Data;
-using BetterServer.Entities;
 using BetterServer.Maps;
 using BetterServer.Session;
 using ExeNet;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 
 namespace BetterServer.State
 {
@@ -54,7 +52,7 @@ namespace BetterServer.State
                 if (peer.Player.RevivalTimes >= 2)
                     _demonCount--;
 
-                if(!server.Peers.Any(e => e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe && e.Value.Player.RevivalTimes < 2 && !e.Value.Player.HasEscaped))
+                if (!server.Peers.Any(e => e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe && e.Value.Player.RevivalTimes < 2 && !e.Value.Player.HasEscaped))
                 {
                     EndGame(server, 0);
                     return;
@@ -91,29 +89,40 @@ namespace BetterServer.State
         }
 
 
-        public override void PeerUDPMessage(Server server, IPEndPoint endpoint, BinaryReader reader)
+        public override void PeerUDPMessage(Server server, IPEndPoint endpoint, ref byte[] data)
         {
             try
             {
-                if (reader.BaseStream.Length <= 0)
+                if (data.Length <= 0)
                 {
                     Terminal.LogDebug($"Length is 0 from {endpoint}");
                     return;
                 }
 
-                var pid = reader.ReadUInt16();
-                var type = (PacketType)reader.ReadByte();
+                FastBitReader reader = new();
 
-                reader.BaseStream.Position = 3;
+                var pid = reader.ReadUShort(ref data);
+                var type = (PacketType)reader.ReadByte(ref data);
+
+                reader.Position = 3;
                 _lastPackets[pid] = 0;
                 switch (type)
                 {
                     case PacketType.CLIENT_PING:
                         {
                             Terminal.LogDebug($"Ping-pong with {endpoint} (PID {pid})");
+
                             var pk = new UdpPacket(PacketType.SERVER_PONG);
-                            pk.Write(reader.ReadUInt64());
+                            var ping = reader.ReadULong(ref data);
+                            var calc = reader.ReadUShort(ref data);
+
+                            pk.Write(ping);
                             server.UDPSend(endpoint, pk);
+
+                            pk = new UdpPacket(PacketType.SERVER_GAME_PING);
+                            pk.Write(pid);
+                            pk.Write(calc);
+                            server.UDPMulticast(ref IPEndPoints, pk, endpoint);
                             break;
                         }
 
@@ -121,40 +130,40 @@ namespace BetterServer.State
                         {
                             if (!_waiting)
                             {
-                                var id = reader.ReadUInt16();
-                                var x = reader.ReadSingle();
-                                var y = reader.ReadSingle();
-
-                                var pack = new UdpPacket(type);
-                                while (reader.BaseStream.Position < reader.BaseStream.Length)
-                                    pack.Write(reader.ReadByte());
-
-                                server.UDPMulticast(ref IPEndPoints, pack, endpoint);
-                                reader.BaseStream.Position = 3;
+                                var id = reader.ReadUShort(ref data);
+                                var x = reader.ReadFloat(ref data);
+                                var y = reader.ReadFloat(ref data);
 
                                 lock (server.Peers)
                                 {
-                                    if(server.Peers.TryGetValue(id, out Peer? value))
+                                    if (server.Peers.TryGetValue(id, out Peer? value))
                                     {
                                         if (value != null)
                                         {
                                             if (value.Player.Character == Character.Exe && value.Player.ExeCharacter == ExeCharacter.Original)
                                             {
-                                                _ = reader.ReadByte(); // state
-                                                _ = reader.ReadInt16(); // angle
-                                                _ = reader.ReadByte(); // index
-                                                _ = reader.ReadSByte(); // scale 
-                                                _ = reader.ReadByte(); // effect time
-                                                _ = reader.ReadByte(); // attacking
-                                                _ = reader.ReadByte(); // hurttime
-                                                value.Player.Invisible = reader.ReadBoolean(); // invisible
+                                                _ = reader.ReadByte(ref data); // state
+                                                _ = reader.ReadUShort(ref data); // angle
+                                                _ = reader.ReadByte(ref data); // index
+                                                _ = reader.ReadChar(ref data); // scale 
+                                                _ = reader.ReadByte(ref data); // effect time   
+                                                _ = reader.ReadByte(ref data); // attacking
+                                                _ = reader.ReadByte(ref data); // hurttime
+                                                value.Player.Invisible = reader.ReadBoolean(ref data); // invisible
                                             }
-
                                             value.Player.X = x;
                                             value.Player.Y = y;
                                         }
                                     }
                                 }
+
+                                reader.Position = 3;
+
+                                var pack = new UdpPacket(type);
+                                while (reader.Position < data.Length)
+                                    pack.Write(reader.ReadByte(ref data));
+
+                                server.UDPMulticast(ref IPEndPoints, pack, endpoint);
                             }
                             break;
                         }
@@ -170,7 +179,7 @@ namespace BetterServer.State
                             Terminal.LogDebug($"Received from {endpoint} (PID {pid})");
                             IPEndPoints.Add(pid, endpoint);
 
-                            lock(_packetTimeouts)
+                            lock (_packetTimeouts)
                                 _packetTimeouts[pid] = -1;
                         }
 
@@ -195,8 +204,8 @@ namespace BetterServer.State
                     return;
                 }
 
-                reader.BaseStream.Position = 0;
-                _map.PeerUDPMessage(server, endpoint, reader);
+                reader.Position = 0;
+                _map.PeerUDPMessage(server, endpoint, data);
             }
             catch (Exception e)
             {
@@ -237,6 +246,7 @@ namespace BetterServer.State
             server.TCPMulticast(packet);
 
             Terminal.LogDiscord("Waiting for players...");
+            Program.Stat?.MulticastInformation();
         }
 
         public override void Tick(Server server)
@@ -255,9 +265,9 @@ namespace BetterServer.State
 
             if (_waiting)
             {
-                lock(_packetTimeouts)
+                lock (_packetTimeouts)
                 {
-                    foreach(var pair in _packetTimeouts)
+                    foreach (var pair in _packetTimeouts)
                     {
                         if (pair.Value == -1)
                             continue;
@@ -269,9 +279,9 @@ namespace BetterServer.State
                 return;
             }
 
-            lock(_reviveTimer)
+            lock (_reviveTimer)
             {
-                foreach(var k in _reviveTimer)
+                foreach (var k in _reviveTimer)
                 {
                     if (k.Value.Progress > 0)
                     {
@@ -449,7 +459,7 @@ namespace BetterServer.State
 
                                 server.TCPMulticast(new TcpPacket(PacketType.SERVER_REVIVAL_STATUS, false, rid));
                                 server.TCPSend(server.GetSession(rid), new TcpPacket(PacketType.SERVER_REVIVAL_REVIVED));
-                                
+
                                 _reviveTimer[rid] = new();
                             }
                             else
@@ -485,7 +495,7 @@ namespace BetterServer.State
                     if (peer.Player.DeadTimer == -1)
                         continue;
 
-                    if (peer.Player.DeadTimer % Ext.FRAMESPSEC == 0)
+                    if ((int)peer.Player.DeadTimer % Ext.FRAMESPSEC == 0)
                     {
                         var pk = new TcpPacket(PacketType.SERVER_GAME_DEATHTIMER_TICK);
                         pk.Write((ushort)peer.ID);
@@ -494,6 +504,7 @@ namespace BetterServer.State
                     }
 
                     peer.Player.DeadTimer -= (Ext.Dist(peer.Player.X, peer.Player.Y, server.Peers[_exeId].Player.X, server.Peers[_exeId].Player.Y) >= 240 ? 1f : 0.5f);
+
                     if (peer.Player.DeadTimer <= 0 || _map.Timer <= Ext.FRAMESPSEC * Ext.FRAMESPSEC * 2)
                     {
                         var pkt = new TcpPacket(PacketType.SERVER_GAME_DEATHTIMER_END);

@@ -169,7 +169,7 @@ namespace BetterServer.State
             }
         }
 
-        public override void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, BinaryReader reader)
+        public override void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, ref byte[] data)
         {
         }
 
@@ -219,6 +219,8 @@ namespace BetterServer.State
                 packet.Write((ushort)Array.IndexOf(MapVote.Maps, _map?.GetType()));
                 server.TCPMulticast(packet);
             }
+
+            Program.Stat?.MulticastInformation();
         }
 
         private Peer? ChooseExe(Server server)
@@ -276,8 +278,10 @@ namespace BetterServer.State
                             continue;
                         }
 
-                        if (_lastPackets[peer.ID] >= 20 * Ext.FRAMESPSEC)
+                        if (_lastPackets[peer.ID] >= 30 * Ext.FRAMESPSEC)
                             server.DisconnectWithReason(server.GetSession(peer.ID), "AFK or Timeout");
+                        else
+                            server.TCPSend(server.GetSession(peer.ID), new TcpPacket(PacketType.SERVER_CHAR_TIME_SYNC, (byte)(30 - (_lastPackets[peer.ID] / Ext.FRAMESPSEC))));
 
                         _lastPackets[peer.ID] += Ext.FRAMESPSEC;
                     }

@@ -115,13 +115,15 @@ namespace BetterServer.State
 
             var packet = new TcpPacket(PacketType.SERVER_VOTE_MAPS, _votes[0].MapID, _votes[1].MapID, _votes[2].MapID);
             server.TCPMulticast(packet);
+
+            Program.Stat?.MulticastInformation();
         }
 
-        public override void PeerJoined(Session.Server server, TcpSession session, Peer peer)
+        public override void PeerJoined(Server server, TcpSession session, Peer peer)
         {
         }
 
-        public override void PeerLeft(Session.Server server, TcpSession session, Peer peer)
+        public override void PeerLeft(Server server, TcpSession session, Peer peer)
         {
             lock (server.Peers)
             {
@@ -184,7 +186,7 @@ namespace BetterServer.State
             }
         }
 
-        public override void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, BinaryReader reader)
+        public override void PeerUDPMessage(Server server, IPEndPoint IPEndPoint, ref byte[] data)
         {
         }
 
