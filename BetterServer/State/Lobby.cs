@@ -10,8 +10,8 @@ namespace BetterServer.State
     {
         private bool _isCounting = false;
         private int _countdown = 5 * Ext.FRAMESPSEC;
+        private object _cooldownLock = new();
         private int _timeout = 1 * Ext.FRAMESPSEC;
-        private Mutex _lock = new();
         private Random _rand = new();
 
         private Dictionary<ushort, int> _lastPackets = new();
@@ -38,11 +38,8 @@ namespace BetterServer.State
                 _isCounting = false;
 
                 // For safety
-                _lock.WaitOne(1000);
-                {
+                lock (_cooldownLock)
                     _countdown = 5 * Ext.FRAMESPSEC;
-                }
-                _lock.ReleaseMutex();
 
                 /* Send update since new player joined */
                 MulticastState(server);
@@ -55,7 +52,6 @@ namespace BetterServer.State
 
             var packet = new TcpPacket(PacketType.SERVER_LOBBY_EXE_CHANCE, (byte)peer.ExeChance);
             server.TCPSend(session, packet);
-
         }
 
         public override void PeerLeft(Server server, TcpSession session, Peer peer)
@@ -67,11 +63,8 @@ namespace BetterServer.State
                     _isCounting = false;
 
                     // For safety
-                    _lock.WaitOne(1000);
-                    {
+                    lock (_cooldownLock)
                         _countdown = 5 * Ext.FRAMESPSEC;
-                    }
-                    _lock.ReleaseMutex();
 
                     /* Send update since new player joined */
                     MulticastState(server);
@@ -91,7 +84,7 @@ namespace BetterServer.State
                 if (_voteKickVotes.Contains(session.ID))
                     _voteKickVotes.Remove(session.ID);
 
-                if(_voteKickTarget == session.ID)
+                if (_voteKickTarget == session.ID)
                 {
                     Terminal.LogDiscord($"Vote kick failed for {peer.Nickname} (PID {peer.ID}) because player left.");
 
@@ -240,7 +233,7 @@ namespace BetterServer.State
 
                                         if (_voteKickVotes.Contains(session.ID))
                                             _voteKickVotes.Remove(session.ID);
-                                        
+
                                         lock (server.Peers)
                                         {
                                             SendMessage(server, $"{server.Peers[session.ID].Nickname} voted \\no~");
@@ -266,9 +259,9 @@ namespace BetterServer.State
                                 case ".p":
                                     if (_practice)
                                     {
-                                        lock(_practiceVotes)
+                                        lock (_practiceVotes)
                                         {
-                                            if(_practiceVotes.Contains(session.ID))
+                                            if (_practiceVotes.Contains(session.ID))
                                                 break;
 
                                             lock (server.Peers)
@@ -296,7 +289,7 @@ namespace BetterServer.State
                                         }
                                     }
 
-                                    lock(server.Peers)
+                                    lock (server.Peers)
                                         _practiceCount = server.Peers.Count;
 
                                     Terminal.LogDiscord($"{server.Peers[session.ID].Nickname} started practice vote");
@@ -415,7 +408,7 @@ namespace BetterServer.State
             if (_isCounting)
             {
                 // For safety
-                _lock.WaitOne(1000);
+                lock (_cooldownLock)
                 {
                     _countdown--;
 
@@ -432,7 +425,6 @@ namespace BetterServer.State
 
 
                 }
-                _lock.ReleaseMutex();
             }
 
             DoVoteKick(server);
@@ -446,18 +438,24 @@ namespace BetterServer.State
 
             lock (server.Peers)
             {
-                foreach (var peer in server.Peers.Values)
+                lock (_lastPackets)
                 {
-                    lock (_lastPackets)
+                    foreach (var peer in server.Peers.Values)
                     {
+                        if (!_lastPackets.ContainsKey(peer.ID))
+                            continue;
+
                         if (peer.Player.IsReady)
                         {
                             _lastPackets[peer.ID] = 0;
                             continue;
                         }
 
-                        if (_lastPackets[peer.ID] >= 30 * Ext.FRAMESPSEC)
+                        if (_lastPackets[peer.ID] >= 25 * Ext.FRAMESPSEC)
+                        {
                             server.DisconnectWithReason(server.GetSession(peer.ID), "AFK or Timeout");
+                            continue;
+                        }
 
                         _lastPackets[peer.ID] += Ext.FRAMESPSEC;
                     }
@@ -490,11 +488,8 @@ namespace BetterServer.State
                     _isCounting = false;
 
                     // For safety
-                    _lock.WaitOne(1000);
-                    {
+                    lock (_cooldownLock)
                         _countdown = 5 * Ext.FRAMESPSEC;
-                    }
-                    _lock.ReleaseMutex();
 
                     MulticastState(server);
                 }
@@ -541,7 +536,7 @@ namespace BetterServer.State
 
             lock (server.Peers)
             {
-                if(!server.Peers.ContainsKey(_voteKickTarget))
+                if (!server.Peers.ContainsKey(_voteKickTarget))
                 {
                     Terminal.LogDiscord($"Vote kick failed for PID {_voteKickTarget} because player left.");
 
@@ -553,11 +548,11 @@ namespace BetterServer.State
                     return;
                 }
 
-                foreach(var peer in server.Peers)
+                foreach (var peer in server.Peers)
                 {
                     bool has = false;
 
-                    foreach(var peer2 in _voteKickVotes)
+                    foreach (var peer2 in _voteKickVotes)
                     {
                         if (peer.Key == peer2)
                         {
@@ -566,12 +561,12 @@ namespace BetterServer.State
                         }
                     }
 
-                    if(!has)
+                    if (!has)
                         totalAgainst++;
                 }
             }
 
-            if(totalFor >= totalAgainst)
+            if (totalFor >= totalAgainst)
             {
                 Terminal.LogDiscord($"Vote kick succeeded for {server.Peers[_voteKickTarget].Nickname} (PID {_voteKickTarget})");
 
@@ -604,9 +599,9 @@ namespace BetterServer.State
             _voteKickVotes.Add(voter);
             _voteKickTimer = Ext.FRAMESPSEC * 15;
 
-            lock(server.Peers)
+            lock (server.Peers)
                 _voteKickCount = server.Peers.Count - 1;
-            
+
             _voteKick = true;
 
             SendMessage(server, $"~----------------------");

@@ -2,7 +2,6 @@
 using BetterServer.State;
 using ExeNet;
 using System.Net;
-using System.Runtime.InteropServices;
 
 namespace BetterServer.Session
 {
@@ -55,6 +54,7 @@ namespace BetterServer.Session
                 }
             });
 
+            _thread.Priority = ThreadPriority.AboveNormal;
             _thread.Name = $"Server {UID}";
             _thread.Start();
         }
@@ -84,19 +84,22 @@ namespace BetterServer.Session
             {
                 var arr = packet.ToArray();
 
-                lock (Peers)
+                lock (SharedServer.Sessions)
                 {
-                    foreach (var peer in Peers)
+                    lock (Peers)
                     {
-                        if (peer.Key == except)
-                            continue;
+                        foreach (var peer in Peers)
+                        {
+                            if (peer.Key == except)
+                                continue;
 
-                        var session = GetSession(peer.Value.ID);
+                            var session = GetSession(peer.Value.ID);
 
-                        if (session == null)
-                            continue;
+                            if (session == null)
+                                continue;
 
-                        session.Send(arr, packet.Length);
+                            session.Send(arr, packet.Length);
+                        }
                     }
                 }
             }
@@ -206,39 +209,32 @@ namespace BetterServer.Session
             if (!session.IsRunning)
                 return;
 
-            // TODO: check why the fuck im doing this
-
-            // Disconnection is handled on another thread since we don't want to deadlock server
-            ThreadPool.QueueUserWorkItem((s) =>
+            Thread.CurrentThread.Name = $"Server {UID}";
+            try
             {
-                Thread.CurrentThread.Name = $"Server {UID}";
+                var endpoint = session.RemoteEndPoint;
+                var id = session.ID;
 
-                try
+                lock (Peers)
                 {
-                    var endpoint = session.RemoteEndPoint;
-                    var id = session.ID;
-
-                    lock (Peers)
+                    if (!Peers.ContainsKey(id))
                     {
-                        if (!Peers.ContainsKey(id))
-                        {
-                            Terminal.LogDiscord($"(ID {id}) disconnect: {reason}");
-                        }
-                        else
-                        {
-
-                            var peer = Peers[id];
-                            Terminal.LogDiscord($"{peer.Nickname} (ID {peer.ID}) disconnect: {reason}");
-                        }
+                        Terminal.LogDiscord($"(ID {id}) disconnect: {reason}");
                     }
+                    else
+                    {
 
-                    var pk = new TcpPacket(PacketType.SERVER_PLAYER_FORCE_DISCONNECT);
-                    pk.Write(reason);
-                    TCPSend(session, pk);
-                    session.Disconnect();
+                        var peer = Peers[id];
+                        Terminal.LogDiscord($"{peer.Nickname} (ID {peer.ID}) disconnect: {reason}");
+                    }
                 }
-                catch (Exception e) { Terminal.LogDiscord($"Disconnect failed: {e}"); }
-            });
+
+                var pk = new TcpPacket(PacketType.SERVER_PLAYER_FORCE_DISCONNECT);
+                pk.Write(reason);
+                TCPSend(session, pk);
+                session.Disconnect();
+            }
+            catch (Exception e) { Terminal.LogDiscord($"Disconnect failed: {e}"); }
         }
 
         public void SetState<T>() where T : BetterServer.State.State

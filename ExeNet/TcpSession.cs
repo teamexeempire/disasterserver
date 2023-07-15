@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Runtime;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -62,6 +63,10 @@ namespace ExeNet
 
             IsRunning = true;
             OnConnected();
+
+            if (!IsRunning)
+                return;
+
             Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
         }
 
@@ -76,29 +81,26 @@ namespace ExeNet
 
         public void Disconnect()
         {
-            Stop();
-        }
-
-        public void Dispose()
-        {
-            Stop();
-            GC.SuppressFinalize(this);
-        }
-
-        private void Stop()
-        {
+            Console.WriteLine($"[TcpSession.cs] CleanUp call from Disconnect ({IsRunning})");
             CleanUp();
         }
 
         private void CleanUp()
         {
+            Console.WriteLine("[TcpSession.cs] CleanUp()");
+
             if (!IsRunning)
                 return;
 
             IsRunning = false;
 
             if (Client.Connected)
+            {
+                Client.GetStream().Close();
                 Client.Close();
+            }
+
+            Console.WriteLine("[TcpSession.cs] Client is closed");
 
             OnDisconnected();
 
@@ -107,6 +109,8 @@ namespace ExeNet
                 if (Server.Sessions.Contains(this))
                     Server.Sessions.Remove(this);
             }
+
+            Console.WriteLine("[TcpSession.cs] Disconnect called and removed from the list.");
         }
 
         private void DoSend(IAsyncResult result)
@@ -221,5 +225,11 @@ namespace ExeNet
         protected virtual void OnError(string message) { }
         protected virtual void Timeouted() { }
         protected virtual void OnDisconnected() { }
+
+        public void Dispose()
+        {
+            Console.WriteLine($"[TcpSession.cs] CleanUp call from Dispose ({IsRunning})");
+            CleanUp();
+        }
     }
 }

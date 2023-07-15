@@ -13,7 +13,7 @@ namespace BetterServer
 
         public static string ReadStringNull(this BinaryReader reader)
         {
-            List<byte> bytes = new List<byte>();
+            List<byte> bytes = new();
 
             byte c;
             while (reader.BaseStream.Position < reader.BaseStream.Length && (c = reader.ReadByte()) != (byte)'\0')

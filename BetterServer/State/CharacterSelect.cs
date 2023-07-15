@@ -264,6 +264,9 @@ namespace BetterServer.State
             {
                 foreach (var peer in server.Peers.Values)
                 {
+                    if (!_lastPackets.Any(e => e.Key == peer.ID))
+                        continue;
+
                     lock (_lastPackets)
                     {
                         if (peer.Player.Character != Character.None && peer.Player.Character != Character.Exe)
@@ -279,7 +282,10 @@ namespace BetterServer.State
                         }
 
                         if (_lastPackets[peer.ID] >= 30 * Ext.FRAMESPSEC)
+                        {
                             server.DisconnectWithReason(server.GetSession(peer.ID), "AFK or Timeout");
+                            continue;
+                        }
                         else
                             server.TCPSend(server.GetSession(peer.ID), new TcpPacket(PacketType.SERVER_CHAR_TIME_SYNC, (byte)(30 - (_lastPackets[peer.ID] / Ext.FRAMESPSEC))));
 

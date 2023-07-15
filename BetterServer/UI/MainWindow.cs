@@ -77,8 +77,8 @@ namespace BetterServer.UI
                                     if (session == null)
                                         continue;
 
-                                    server.DisconnectWithReason(session, "Kicked by server.");
                                     KickList.Add((session.RemoteEndPoint! as IPEndPoint).Address.ToString()!);
+                                    server.DisconnectWithReason(session, "Kicked by server.");
                                 }
                                 break;
 
@@ -90,9 +90,10 @@ namespace BetterServer.UI
                                     if (session == null)
                                         continue;
 
-                                    server.DisconnectWithReason(session, "Banned by server.");
                                     if (BanList.Ban(data.value1, out string name, out string ip))
                                         UIWrapper.gui_add_ban(name, ip);
+
+                                    server.DisconnectWithReason(session, "Banned by server.");
 
                                 }
                                 break;

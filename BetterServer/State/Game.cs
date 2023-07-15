@@ -2,6 +2,7 @@
 using BetterServer.Maps;
 using BetterServer.Session;
 using ExeNet;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 
@@ -110,19 +111,32 @@ namespace BetterServer.State
                 {
                     case PacketType.CLIENT_PING:
                         {
-                            Terminal.LogDebug($"Ping-pong with {endpoint} (PID {pid})");
+                            if (!IPEndPoints.Any(e => e.Value.ToString() == endpoint.ToString()) && !_waiting)
+                            {
+                                var session = server.GetSession(pid);
 
-                            var pk = new UdpPacket(PacketType.SERVER_PONG);
-                            var ping = reader.ReadULong(ref data);
-                            var calc = reader.ReadUShort(ref data);
+                                if(session == null)
+                                    break;
 
-                            pk.Write(ping);
-                            server.UDPSend(endpoint, pk);
+                                Terminal.LogDebug($"ANTI SERG BOM BOM");
+                                server.DisconnectWithReason(session, "invalid session");
+                            }
+                            else
+                            {
+                                Terminal.LogDebug($"Ping-pong with {endpoint} (PID {pid})");
 
-                            pk = new UdpPacket(PacketType.SERVER_GAME_PING);
-                            pk.Write(pid);
-                            pk.Write(calc);
-                            server.UDPMulticast(ref IPEndPoints, pk, endpoint);
+                                var pk = new UdpPacket(PacketType.SERVER_PONG);
+                                var ping = reader.ReadULong(ref data);
+                                var calc = reader.ReadUShort(ref data);
+
+                                pk.Write(ping);
+                                server.UDPSend(endpoint, pk);
+
+                                pk = new UdpPacket(PacketType.SERVER_GAME_PING);
+                                pk.Write(pid);
+                                pk.Write(calc);
+                                server.UDPMulticast(ref IPEndPoints, pk, endpoint);
+                            }
                             break;
                         }
 
@@ -151,6 +165,7 @@ namespace BetterServer.State
                                                 _ = reader.ReadByte(ref data); // hurttime
                                                 value.Player.Invisible = reader.ReadBoolean(ref data); // invisible
                                             }
+
                                             value.Player.X = x;
                                             value.Player.Y = y;
                                         }
@@ -316,18 +331,27 @@ namespace BetterServer.State
 
             lock (server.Peers)
             {
-                foreach (var peer in server.Peers.Values)
+                lock (_lastPackets)
                 {
-                    if (peer.Player.HasEscaped || !peer.Player.IsAlive)
+                    foreach (var peer in server.Peers.Values)
                     {
-                        _lastPackets[peer.ID] = 0;
-                        continue;
+                        if (!_lastPackets.ContainsKey(peer.ID))
+                            continue;
+
+                        if (peer.Player.HasEscaped || !peer.Player.IsAlive)
+                        {
+                            _lastPackets[peer.ID] = 0;
+                            continue;
+                        }
+
+                        if (_lastPackets[peer.ID] >= 4 * Ext.FRAMESPSEC)
+                        {
+                            server.DisconnectWithReason(server.GetSession(peer.ID), "AFK or Timeout");
+                            continue;
+                        }
+
+                        _lastPackets[peer.ID] += Ext.FRAMESPSEC;
                     }
-
-                    if (_lastPackets[peer.ID] >= 4 * Ext.FRAMESPSEC)
-                        server.DisconnectWithReason(server.GetSession(peer.ID), "AFK or Timeout");
-
-                    _lastPackets[peer.ID] += Ext.FRAMESPSEC;
                 }
             }
 

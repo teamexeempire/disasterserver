@@ -258,7 +258,7 @@ void MainWindow::on_mapSetOpen_clicked()
     std::array<bool, 18> arr;
 
     int i = 0;
-    for(auto& it : jObj)
+    for(auto it : jObj)
     {
         if(!it.isBool())
         {

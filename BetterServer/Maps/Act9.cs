@@ -37,6 +37,6 @@ namespace BetterServer.Maps
             return 3;
         }
 
-        public override bool CanSpawnRedRings() => false;
+        public override bool CanSpawnRedRings() => true;
     }
 }
