@@ -2,6 +2,8 @@
 using BetterServer.Maps;
 using BetterServer.Session;
 using BetterServer.State;
+using System.Numerics;
+using Vector2 = BetterServer.Data.Vector2;
 
 namespace BetterServer.Entities
 {
@@ -43,6 +45,9 @@ namespace BetterServer.Entities
                         if (player.Player.RevivalTimes >= 2)
                             continue;
 
+                        if (player.Waiting)
+                            continue;
+
                         double dist = Ext.Dist(player.Player.X, player.Player.Y, X, Y);
 
                         if (dist < 130)
@@ -64,6 +69,9 @@ namespace BetterServer.Entities
                             continue;
 
                         if (player.Player.RevivalTimes >= 2)
+                            continue;
+
+                        if (player.Waiting)
                             continue;
 
                         double dist = Ext.Dist(player.Player.X, player.Player.Y, X, Y);

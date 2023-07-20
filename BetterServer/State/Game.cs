@@ -53,13 +53,13 @@ namespace BetterServer.State
                 if (peer.Player.RevivalTimes >= 2)
                     _demonCount--;
 
-                if (!server.Peers.Any(e => e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe && e.Value.Player.RevivalTimes < 2 && !e.Value.Player.HasEscaped))
+                if (!server.Peers.Any(e => !e.Value.Waiting && e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe && e.Value.Player.RevivalTimes < 2 && !e.Value.Player.HasEscaped))
                 {
                     EndGame(server, 0);
                     return;
                 }
 
-                if (!server.Peers.Any(e => (!e.Value.Player.HasEscaped && e.Value.Player.Character != Character.Exe)))
+                if (!server.Peers.Any(e => (!e.Value.Waiting && !e.Value.Player.HasEscaped && e.Value.Player.Character != Character.Exe)))
                 {
                     EndGame(server, 1);
                     return;
@@ -200,7 +200,7 @@ namespace BetterServer.State
 
                         lock (server.Peers)
                         {
-                            if (IPEndPoints.Count >= server.Peers.Count)
+                            if (IPEndPoints.Count >= server.Peers.Count(e => !e.Value.Waiting))
                             {
                                 lock (_map)
                                 {
@@ -246,6 +246,9 @@ namespace BetterServer.State
             {
                 foreach (var peer in server.Peers.Values)
                 {
+                    if (peer.Waiting)
+                        continue;
+
                     lock (_lastPackets)
                         _lastPackets.Add(peer.ID, 0);
 
@@ -335,6 +338,9 @@ namespace BetterServer.State
                 {
                     foreach (var peer in server.Peers.Values)
                     {
+                        if (peer.Waiting)
+                            continue;
+
                         if (!_lastPackets.ContainsKey(peer.ID))
                             continue;
 
@@ -368,8 +374,11 @@ namespace BetterServer.State
 
             switch ((PacketType)type)
             {
-                case PacketType.CLIENT_PLAYER_PALLETE:
-                    break;
+                case PacketType.IDENTITY:
+                    {
+                        Ext.HandleIdentity(server, session, reader);
+                        break;
+                    }
 
                 /* If player dies */
                 case PacketType.CLIENT_PLAYER_DEATH_STATE:
@@ -510,6 +519,9 @@ namespace BetterServer.State
                 var arr = server.Peers.Values.OrderBy(e => e.Player.DeadTimer);
                 foreach (var peer in arr)
                 {
+                    if (peer.Waiting)
+                        continue;
+
                     if (peer.Player.IsAlive || peer.Player.HasEscaped)
                     {
                         peer.Player.DeadTimer = -1;
@@ -575,6 +587,9 @@ namespace BetterServer.State
 
                 foreach (var player in server.Peers)
                 {
+                    if (player.Value.Waiting)
+                        continue;
+
                     if (player.Key == _exeId)
                         continue;
 
@@ -586,7 +601,7 @@ namespace BetterServer.State
                 }
 
                 // Exe wins
-                if (alive == 0)
+                if (alive == 0 && escaped == 0)
                 {
                     EndGame(server, 0);
                     return;

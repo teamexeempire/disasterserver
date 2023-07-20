@@ -39,6 +39,9 @@ namespace BetterServer.State
                 var cnt = 0;
                 foreach (var pr in server.Peers.Values)
                 {
+                    if (pr.Waiting)
+                        continue;
+
                     if (pr.Player.Character != Character.None)
                     {
                         if (pr.Player.Character == Character.Exe && pr.Player.ExeCharacter == ExeCharacter.None)
@@ -48,7 +51,7 @@ namespace BetterServer.State
                     }
                 }
 
-                if (cnt >= server.Peers.Count)
+                if (cnt >= server.Peers.Count(e => !e.Value.Waiting))
                     server.SetState(new Game(_map, _exe.ID));
             }
 
@@ -69,6 +72,12 @@ namespace BetterServer.State
 
             switch ((PacketType)type)
             {
+                case PacketType.IDENTITY:
+                    {
+                        Ext.HandleIdentity(server, session, reader);
+                        break;
+                    }
+
                 case PacketType.CLIENT_REQUEST_EXECHARACTER:
                     {
                         var id = reader.ReadByte() - 1;
@@ -84,6 +93,9 @@ namespace BetterServer.State
                             var cnt = 0;
                             foreach (var peer in server.Peers.Values)
                             {
+                                if (peer.Waiting)
+                                    continue;
+
                                 if (peer.Player.Character != Character.None)
                                 {
                                     if (peer.Player.Character == Character.Exe && peer.Player.ExeCharacter == ExeCharacter.None)
@@ -104,7 +116,7 @@ namespace BetterServer.State
                             packet.Write(id);
                             server.TCPMulticast(packet, session.ID);
 
-                            if (++cnt >= server.Peers.Count)
+                            if (++cnt >= server.Peers.Count(e => !e.Value.Waiting))
                                 server.SetState(new Game(_map, _exe.ID));
                         }
 
@@ -124,6 +136,9 @@ namespace BetterServer.State
 
                             foreach (var peer in server.Peers.Values)
                             {
+                                if (peer.Waiting)
+                                    continue;
+
                                 if (peer.Player.Character == (Character)id)
                                     canUse = false;
 
@@ -154,7 +169,7 @@ namespace BetterServer.State
 
                                 Terminal.LogDiscord($"{peer.Nickname} chooses {(Character)id}");
 
-                                if (++cnt >= server.Peers.Count)
+                                if (++cnt >= server.Peers.Count(e => !e.Value.Waiting))
                                     server.SetState(new Game(_map, _exe.ID));
                             }
                             else
@@ -190,6 +205,9 @@ namespace BetterServer.State
                         continue;
                     }
 
+                    if (peer.Waiting)
+                        continue;
+
                     lock (_lastPackets)
                         _lastPackets.Add(peer.ID, 0);
 
@@ -206,6 +224,9 @@ namespace BetterServer.State
 
                 foreach (var peer in server.Peers.Values)
                 {
+                    if (peer.Waiting)
+                        continue;
+
                     if (peer.Player.Character != Character.Exe)
                         peer.ExeChance += _rand.Next(4, 10);
                     else
@@ -233,6 +254,9 @@ namespace BetterServer.State
                 double lastWeight = 0;
                 foreach (var peer in server.Peers.Values)
                 {
+                    if (peer.Waiting)
+                        continue;
+
                     accWeight += peer.ExeChance;
                     lastWeight = peer.ExeChance;
 
@@ -243,7 +267,7 @@ namespace BetterServer.State
                 foreach (var chance in chances)
                 {
                     if (chance.Value >= r)
-                        return server.Peers.Values.FirstOrDefault(e => e.ID == chance.Key);
+                        return server.Peers.Values.FirstOrDefault(e => e.ID == chance.Key && !e.Waiting);
                 }
 
                 return server.Peers.Values.FirstOrDefault();
@@ -264,6 +288,9 @@ namespace BetterServer.State
             {
                 foreach (var peer in server.Peers.Values)
                 {
+                    if (peer.Waiting)
+                        continue;
+
                     if (!_lastPackets.Any(e => e.Key == peer.ID))
                         continue;
 

@@ -2,12 +2,19 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace BetterServer
 {
+    class Ban
+    {
+        [JsonPropertyName("list")]
+        public Dictionary<string, Dictionary<string, string>> List = new();
+    }
+
     public class BanList
     {
-        private static JsonNode _doc;
+        private static Ban _list = new();
 
         static BanList()
         {
@@ -16,7 +23,7 @@ namespace BetterServer
                 if (!File.Exists("Config/Banlist.json"))
                     WriteDefault();
                 else
-                    _doc = JsonNode.Parse(File.ReadAllText("Config/Banlist.json"))!;
+                    _list = JsonSerializer.Deserialize<Ban>(File.ReadAllText("Config/Banlist.json"))!;
             }
             catch
             {
@@ -28,8 +35,7 @@ namespace BetterServer
         {
             try
             {
-                string ser = JsonSerializer.Serialize(new { });
-                _doc = JsonNode.Parse(ser)!;
+                string ser = JsonSerializer.Serialize(_list);
 
                 if (!Directory.Exists("Config"))
                     Directory.CreateDirectory("Config");
@@ -42,10 +48,10 @@ namespace BetterServer
             }
         }
 
-        public static bool Ban(ushort pid, out string nickname, out string ip)
+        public static bool Ban(ushort pid, out string nickname, out string unique)
         {
+            unique = "";
             nickname = "";
-            ip = "";
 
             foreach (var server in Program.Servers)
             {
@@ -54,11 +60,18 @@ namespace BetterServer
                     if (!server.Peers.ContainsKey(pid))
                         continue;
 
+                    unique = server.Peers[pid].Unique;
                     nickname = server.Peers[pid].Nickname;
-                    ip = (server.Peers[pid].EndPoint as IPEndPoint).Address.ToString();
+                    var ip = (server.Peers[pid].EndPoint as IPEndPoint).Address.ToString();
 
-                    _doc[ip] = nickname;
-                    File.WriteAllText("Config/Banlist.json", _doc.ToJsonString());
+                    var @struct = new Dictionary<string, string>()
+                    {
+                        { "name", nickname },
+                        { "ip", ip }
+                    };
+
+                    _list.List[unique] = @struct;
+                    File.WriteAllText("Config/Banlist.json", JsonSerializer.Serialize(_list));
                     return true;
                 }
             }
@@ -66,38 +79,26 @@ namespace BetterServer
             return false;    
         }
 
-        public static void Unban(string ip)
+        public static void Unban(string unqie)
         {
-            if (!_doc.AsObject().ContainsKey(ip))
+            if (!_list.List.ContainsKey(unqie))
                 return;
 
-            _doc.AsObject().Remove(ip);
-            File.WriteAllText("Config/Banlist.json", _doc.ToJsonString());
+            _list.List.Remove(unqie);
+            File.WriteAllText("Config/Banlist.json", JsonSerializer.Serialize(_list));
         }
 
-        public static bool Check(string ip)
+        public static bool Check(string unqie)
         {
-            if (!_doc.AsObject().ContainsKey(ip))
+            if (!_list.List.ContainsKey(unqie))
                 return false;
 
             return true;
         }
 
-        public static List<KeyValuePair<string, string>> GetBanned()
+        public static Dictionary<string, Dictionary<string, string>> GetBanned()
         {
-            List<KeyValuePair<string, string>> strings = new();
-
-            foreach(var it in _doc.AsObject())
-            {
-                var val = it.Value;
-                
-                if (val == null) 
-                    continue;
-
-                strings.Add(new KeyValuePair<string, string>(it.Key, val.GetValue<string>()));
-            }
-
-            return strings;
+            return _list.List;
         }
     }
 }

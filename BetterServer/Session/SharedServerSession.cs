@@ -45,27 +45,19 @@ namespace BetterServer.Session
                     return;
                 }
 
-                if (_server.State.AsState() != State.LOBBY)
-                {
-                    _server.DisconnectWithReason(this, "Game has already started");
-                    return;
-                }
-
                 var peer = new Peer()
                 {
                     EndPoint = RemoteEndPoint!,
 
                     Player = new(),
-                    ID = ID
+                    ID = ID,
+                    Pending = true,
+                    Waiting = _server.State.AsState() != State.LOBBY
                 };
                 _server.Peers.Add(ID, peer);
-                _server.State.PeerJoined(_server, this, peer);
-
-                var packet = new TcpPacket(PacketType.SERVER_PLAYER_JOINED, peer.ID);
-                _server.TCPMulticast(packet, ID);
-
-                packet = new TcpPacket(PacketType.SERVER_REQUEST_INFO, peer.ID);
-                _server.TCPSend(this, packet);
+                
+                if(!peer.Waiting)
+                    _server.State.PeerJoined(_server, this, peer);
 
                 Terminal.Log($"{RemoteEndPoint} (ID {ID}) connected.");
             }

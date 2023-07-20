@@ -109,6 +109,9 @@ namespace BetterServer.State
                         continue;
                     }
 
+                    if (peer.Value.Waiting)
+                        continue;
+
                     _votePeers.Add(peer.Key, false);
                 }
             }
@@ -153,6 +156,12 @@ namespace BetterServer.State
 
             switch ((PacketType)type)
             {
+                case PacketType.IDENTITY:
+                    {
+                        Ext.HandleIdentity(server, session, reader);
+                        break;
+                    }
+
                 case PacketType.CLIENT_VOTE_REQUEST:
                     {
                         var map = reader.ReadByte();

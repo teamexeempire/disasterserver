@@ -2,7 +2,9 @@
 using BetterServer.Maps;
 using BetterServer.Session;
 using ExeNet;
+using System.Linq;
 using System.Net;
+using System.Numerics;
 
 namespace BetterServer.State
 {
@@ -20,10 +22,8 @@ namespace BetterServer.State
         private int _voteKickTimer = 0;
         private List<ushort> _voteKickVotes = new();
         private bool _voteKick = false;
-        private int _voteKickCount = 0;
 
         private bool _practice = false;
-        private int _practiceCount = 0;
         private List<ushort> _practiceVotes = new();
 
         public override Session.State AsState()
@@ -52,6 +52,9 @@ namespace BetterServer.State
 
             var packet = new TcpPacket(PacketType.SERVER_LOBBY_EXE_CHANCE, (byte)peer.ExeChance);
             server.TCPSend(session, packet);
+
+            packet = new TcpPacket(PacketType.SERVER_PLAYER_JOINED, peer.ID);
+            server.TCPMulticast(packet, peer.ID);
         }
 
         public override void PeerLeft(Server server, TcpSession session, Peer peer)
@@ -76,34 +79,66 @@ namespace BetterServer.State
                 Terminal.LogDiscord($"{peer.Nickname} (ID {peer.ID}) left.");
             }
 
-            lock (_voteKickVotes)
+            lock(server.Peers)
             {
-                if (!_voteKick)
-                    return;
-
-                if (_voteKickVotes.Contains(session.ID))
-                    _voteKickVotes.Remove(session.ID);
-
-                if (_voteKickTarget == session.ID)
+                if (server.Peers.Count <= 0)
                 {
-                    Terminal.LogDiscord($"Vote kick failed for {peer.Nickname} (PID {peer.ID}) because player left.");
+                    lock (_voteKickVotes)
+                    {
+                        if (_voteKick)
+                        {
+                            Terminal.LogDiscord($"Vote kick failed for {peer.Nickname} (PID {peer.ID}) because everyone left.");
 
-                    SendMessage(server, $"\\kick vote failed~ (player left)");
-                    _voteKickVotes.Clear();
-                    _voteKickTimer = 0;
-                    _voteKickTarget = ushort.MaxValue;
-                    _voteKick = false;
-                    return;
+                            _voteKickVotes.Clear();
+                            _voteKickTimer = 0;
+                            _voteKickTarget = ushort.MaxValue;
+                            _voteKick = false;
+                        }
+                    }
+
+                    lock (_practiceVotes)
+                    {
+                        if (_practice)
+                        {
+                            Terminal.LogDiscord($"Practice failed because everyone left.");
+                            _practiceVotes.Clear();
+                            _practice = false;
+                        }
+                    }
                 }
-
-                if (_voteKickVotes.Count >= _voteKickCount)
-                    CheckVoteKick(server, false);
             }
 
-            lock (_practiceVotes)
+            if (_voteKick)
             {
-                if (_practiceVotes.Contains(session.ID))
-                    _practiceVotes.Remove(session.ID);
+                lock (_voteKickVotes)
+                {
+                    if (_voteKickVotes.Contains(session.ID))
+                        _voteKickVotes.Remove(session.ID);
+
+                    if (_voteKickTarget == session.ID)
+                    {
+                        Terminal.LogDiscord($"Vote kick failed for {peer.Nickname} (PID {peer.ID}) because player left.");
+
+                        SendMessage(server, $"\\kick vote failed~ (player left)");
+                        _voteKickVotes.Clear();
+                        _voteKickTimer = 0;
+                        _voteKickTarget = ushort.MaxValue;
+                        _voteKick = false;
+                        return;
+                    }
+
+                    if (_voteKickVotes.Count >= server.Peers.Count(e => e.Key != _voteKickTarget))
+                        CheckVoteKick(server, false);
+                }
+            }
+
+            if (_practice)
+            {
+                lock (_practiceVotes)
+                {
+                    if (_practiceVotes.Contains(session.ID))
+                        _practiceVotes.Remove(session.ID);
+                }
             }
         }
 
@@ -120,6 +155,12 @@ namespace BetterServer.State
 
             switch ((PacketType)type)
             {
+                case PacketType.IDENTITY:
+                    {
+                        Ext.HandleIdentity(server, session, reader);
+                        break;
+                    }
+
                 /* Player requests player list */
                 case PacketType.CLIENT_LOBBY_PLAYERS_REQUEST:
                     {
@@ -151,45 +192,6 @@ namespace BetterServer.State
                         break;
                     }
 
-                /* Info requested by server */
-                case PacketType.CLIENT_REQUESTED_INFO:
-                    {
-                        var ver = reader.ReadUInt16();
-                        if (ver != Program.BUILD_VER)
-                        {
-                            server.DisconnectWithReason(session, $"Wrong game version ({Program.BUILD_VER} required, but got {ver})");
-                            break;
-                        }
-
-                        var packet = new TcpPacket(PacketType.SERVER_PLAYER_INFO);
-                        lock (server.Peers)
-                        {
-                            var name = reader.ReadStringNull();
-                            var icon = reader.ReadByte();
-                            var pet = reader.ReadSByte();
-
-                            if (server.Peers.ContainsKey(session.ID))
-                            {
-                                server.Peers[session.ID].Pending = false;
-                                server.Peers[session.ID].Nickname = Ext.ValidateNick(name);
-                                server.Peers[session.ID].Icon = icon;
-                                server.Peers[session.ID].Pet = pet;
-
-                                Terminal.LogDiscord($"{name} (ID {server.Peers[session.ID].ID}) joined.");
-                                packet.Write(server.Peers[session.ID].ID);
-                                packet.Write(name);
-                                packet.Write(icon);
-                                packet.Write(pet);
-
-                                Program.Window.AddPlayer(server.Peers[session.ID]);
-                            }
-                        }
-                        server.TCPMulticast(packet, session.ID);
-
-                        Program.Stat?.MulticastInformation();
-                    }
-                    break;
-
                 /* Chat message */
                 case PacketType.CLIENT_CHAT_MESSAGE:
                     {
@@ -218,7 +220,7 @@ namespace BetterServer.State
                                             Terminal.LogDiscord($"{server.Peers[session.ID].Nickname} voted yes");
                                         }
 
-                                        if (_voteKickVotes.Count >= _voteKickCount)
+                                        if (_voteKickVotes.Count >= server.Peers.Count(e => e.Key != _voteKickTarget))
                                             CheckVoteKick(server, false);
                                     }
 
@@ -240,7 +242,7 @@ namespace BetterServer.State
                                             Terminal.LogDiscord($"{server.Peers[session.ID].Nickname} voted no");
                                         }
 
-                                        if (_voteKickVotes.Count >= _voteKickCount)
+                                        if (_voteKickVotes.Count >= server.Peers.Count(e => e.Key != _voteKickTarget))
                                             CheckVoteKick(server, false);
                                     }
                                     break;
@@ -271,7 +273,7 @@ namespace BetterServer.State
 
                                                 _practiceVotes.Add(session.ID);
 
-                                                if (_practiceVotes.Count >= _practiceCount)
+                                                if (_practiceVotes.Count >= server.Peers.Count)
                                                     server.SetState(new CharacterSelect(new FartZone()));
                                             }
                                         }
@@ -289,9 +291,6 @@ namespace BetterServer.State
                                         }
                                     }
 
-                                    lock (server.Peers)
-                                        _practiceCount = server.Peers.Count;
-
                                     Terminal.LogDiscord($"{server.Peers[session.ID].Nickname} started practice vote");
                                     SendMessage(server, $"~----------------------");
                                     SendMessage(server, $"\\`practice~ vote started by /{server.Peers[id].Nickname}~");
@@ -304,6 +303,9 @@ namespace BetterServer.State
                                 default:
                                     foreach (var peer in server.Peers.Values)
                                     {
+                                        if (peer.Waiting)
+                                            continue;
+
                                         if (peer.ID != id)
                                             continue;
 
@@ -354,7 +356,7 @@ namespace BetterServer.State
 
                                         SendMessage(server, $"{server.Peers[session.ID].Nickname} voted @yes~");
 
-                                        if (_voteKickVotes.Count >= _voteKickCount)
+                                        if (_voteKickVotes.Count >= server.Peers.Count(e => e.Key != _voteKickTarget))
                                             CheckVoteKick(server, false);
                                     }
                                 }
@@ -384,6 +386,22 @@ namespace BetterServer.State
             {
                 foreach (var peer in server.Peers.Values)
                 {
+                    if (peer.Waiting)
+                    {
+                        var pak = new TcpPacket(PacketType.SERVER_IDENTITY_RESPONSE);
+                        pak.Write(true);
+                        pak.Write(peer.ID);
+                        server.TCPSend(server.GetSession(peer.ID), pak);
+
+                        peer.Waiting = false;
+                        Program.Window.AddPlayer(peer);
+                    }
+                    else
+                    {
+                        var pk = new TcpPacket(PacketType.SERVER_GAME_BACK_TO_LOBBY);
+                        server.TCPSend(server.GetSession(peer.ID), pk);
+                    }
+
                     lock (_lastPackets)
                         _lastPackets.Add(peer.ID, 0);
 
@@ -396,9 +414,6 @@ namespace BetterServer.State
                     server.TCPSend(server.GetSession(peer.ID), packet);
                 }
             }
-
-            var pk = new TcpPacket(PacketType.SERVER_GAME_BACK_TO_LOBBY);
-            server.TCPMulticast(pk);
 
             Program.Stat?.MulticastInformation();
         }
@@ -422,8 +437,6 @@ namespace BetterServer.State
                         if (_countdown % Ext.FRAMESPSEC == 0)
                             MulticastState(server);
                     }
-
-
                 }
             }
 
@@ -442,6 +455,12 @@ namespace BetterServer.State
                 {
                     foreach (var peer in server.Peers.Values)
                     {
+                        if (peer.Waiting)
+                        {
+                            _lastPackets[peer.ID] = 0;
+                            continue;
+                        }
+
                         if (!_lastPackets.ContainsKey(peer.ID))
                             continue;
 
@@ -550,6 +569,9 @@ namespace BetterServer.State
 
                 foreach (var peer in server.Peers)
                 {
+                    if (peer.Value.Waiting)
+                        continue;
+
                     bool has = false;
 
                     foreach (var peer2 in _voteKickVotes)
@@ -598,10 +620,6 @@ namespace BetterServer.State
             _voteKickVotes.Clear();
             _voteKickVotes.Add(voter);
             _voteKickTimer = Ext.FRAMESPSEC * 15;
-
-            lock (server.Peers)
-                _voteKickCount = server.Peers.Count - 1;
-
             _voteKick = true;
 
             SendMessage(server, $"~----------------------");

@@ -1,8 +1,5 @@
 ﻿using System.Net;
-using System.Net.Http;
 using System.Net.Sockets;
-using System.Runtime;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ExeNet
 {
@@ -153,7 +150,7 @@ namespace ExeNet
                         break;
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 OnError(e.Message);
             }
@@ -163,6 +160,9 @@ namespace ExeNet
         {
             try
             {
+                if (Client == null)
+                    return;
+
                 if (!Client.Connected)
                 {
                     CleanUp();
@@ -210,12 +210,19 @@ namespace ExeNet
 
                 OnData(_readBuffer, length);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 OnError(e.Message);
             }
 
-            Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
+            try
+            {
+                Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
+            }
+            catch (Exception e)
+            {
+                OnError(e.Message);
+            }
         }
 
 

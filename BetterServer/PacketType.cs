@@ -2,6 +2,9 @@
 {
     public enum PacketType : byte
     {
+        IDENTITY,
+        SERVER_IDENTITY_RESPONSE,
+
         SERVER_PLAYER_JOINED,
         SERVER_PLAYER_LEFT,
         SERVER_PLAYER_INFO,
@@ -132,6 +135,7 @@
         CLIENT_CHAT_MESSAGE,
         CLIENT_LOBBY_VOTEKICK,
         CLIENT_PLAYER_PALLETE,
+        CLIENT_PET_PALLETE,
 
         CLIENT_PLAYER_POTATER
     }

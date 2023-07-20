@@ -87,8 +87,7 @@ namespace ExeNet
 
                 if (endpoint == null)
                     continue;
-
-                
+  
                 try
                 {
                     OnData(endpoint, ref data);

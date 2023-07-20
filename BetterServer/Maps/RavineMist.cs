@@ -60,6 +60,9 @@ namespace BetterServer.Maps
             {
                 foreach (var peer in server.Peers)
                 {
+                    if (peer.Value.Waiting)
+                        continue;
+
                     _playersShardCount.Add(peer.Key, 0);
                 }
             }
@@ -148,7 +151,7 @@ namespace BetterServer.Maps
 
                             Peer? killer;
                             lock (server.Peers)
-                                killer = server.Peers.Values.Where(e => e.ID == pid).FirstOrDefault();
+                                killer = server.Peers.Values.Where(e => e.ID == pid && !e.Waiting).FirstOrDefault();
 
                             if (killer == null)
                                 break;

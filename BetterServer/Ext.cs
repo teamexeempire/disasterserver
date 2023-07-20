@@ -1,8 +1,14 @@
-﻿using System;
+﻿using BetterServer.Data;
+using BetterServer.Session;
+using ExeNet;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Collections.Specialized.BitVector32;
 
 namespace BetterServer
 {
@@ -47,8 +53,72 @@ namespace BetterServer
 
             if (nick2.Length <= 0 || string.IsNullOrEmpty(nick2) || string.IsNullOrWhiteSpace(nick2))
                 return $"/player~ \\{_rand.Next(9999)}";
-
             return nick;
+        }
+
+        public static void HandleIdentity(Server server, TcpSession session, BinaryReader reader)
+        {
+            var ver = reader.ReadUInt16();
+            var name = reader.ReadStringNull();
+            var icon = reader.ReadByte();
+            var pet = reader.ReadSByte();
+            var os = (OSType)reader.ReadByte();
+            var udid = reader.ReadStringNull();
+            
+            if (ver != Program.BUILD_VER)
+            {
+                server.DisconnectWithReason(session, $"Wrong game version ({Program.BUILD_VER} required, but got {ver})");
+                return;
+            }
+            
+            lock (server.Peers)
+            {
+                if (server.Peers.ContainsKey(session.ID))
+                {
+                    server.Peers[session.ID].Pending = false;
+                    server.Peers[session.ID].Waiting = server.State.AsState() != Session.State.LOBBY;
+                    server.Peers[session.ID].Nickname = ValidateNick(name);
+                    server.Peers[session.ID].Icon = icon;
+                    server.Peers[session.ID].Pet = pet;
+                    server.Peers[session.ID].Unique = udid;
+
+                    if (server.State.AsState() == Session.State.LOBBY)
+                    {
+                        Terminal.LogDiscord($"{name} (ID {server.Peers[session.ID].ID}) joined.");
+
+                        var packet = new TcpPacket(PacketType.SERVER_PLAYER_INFO);
+                        packet.Write(server.Peers[session.ID].ID);
+                        packet.Write(name);
+                        packet.Write(icon);
+                        packet.Write(pet);
+                        server.TCPMulticast(packet, session.ID);
+
+                        Program.Window.AddPlayer(server.Peers[session.ID]);
+                    }
+                }
+            }
+            Program.Stat?.MulticastInformation();
+
+            Terminal.LogDebug($"Indentity recived from {(IPEndPoint?)session.RemoteEndPoint}:");
+            Terminal.LogDebug($"  OS: {os}");
+            Terminal.LogDebug($"  UNIQUE: {udid}");
+
+            if (KickList.Check(udid))
+            {
+                server.DisconnectWithReason(session, "Kick by host.");
+                return;
+            }
+
+            if (BanList.Check(udid))
+            {
+                server.DisconnectWithReason(session, "Banned by host.");
+                return;
+            }
+
+            var pak = new TcpPacket(PacketType.SERVER_IDENTITY_RESPONSE);
+            pak.Write(server.State.AsState() == Session.State.LOBBY);
+            pak.Write(session.ID);
+            server.TCPSend(session, pak);
         }
     }
 }

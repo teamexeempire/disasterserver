@@ -57,6 +57,9 @@ namespace BetterServer.Entities
                 {
                     foreach (var peer in server.Peers)
                     {
+                        if (peer.Value.Waiting)
+                            continue;
+
                         if (peer.Value.Player.Invisible)
                             continue;
 

@@ -90,11 +90,10 @@ namespace BetterServer.UI
                                     if (session == null)
                                         continue;
 
-                                    if (BanList.Ban(data.value1, out string name, out string ip))
-                                        UIWrapper.gui_add_ban(name, ip);
+                                    if (BanList.Ban(data.value1, out string name, out string unique))
+                                        UIWrapper.gui_add_ban(name, unique);
 
                                     server.DisconnectWithReason(session, "Banned by server.");
-
                                 }
                                 break;
 
@@ -180,7 +179,7 @@ namespace BetterServer.UI
                 }
 
                 foreach (var it in BanList.GetBanned())
-                    UIWrapper.gui_add_ban(it.Value, it.Key);
+                    UIWrapper.gui_add_ban(it.Value["name"], it.Key);
             }
             catch { }
         }
