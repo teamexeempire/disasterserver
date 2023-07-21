@@ -92,9 +92,9 @@ namespace BetterServer
                         packet.Write(icon);
                         packet.Write(pet);
                         server.TCPMulticast(packet, session.ID);
-
-                        Program.Window.AddPlayer(server.Peers[session.ID]);
                     }
+
+                    Program.Window.AddPlayer(server.Peers[session.ID]);
                 }
             }
             Program.Stat?.MulticastInformation();

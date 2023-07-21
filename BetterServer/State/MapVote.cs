@@ -130,7 +130,7 @@ namespace BetterServer.State
         {
             lock (server.Peers)
             {
-                if (server.Peers.Count <= 1)
+                if (server.Peers.Count(e => !e.Value.Waiting) <= 1)
                 {
                     server.SetState<Lobby>();
                     return;

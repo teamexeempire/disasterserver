@@ -6,10 +6,10 @@ using System.Text.Json.Serialization;
 
 namespace BetterServer
 {
-    class Ban
+    public class Ban
     {
         [JsonPropertyName("list")]
-        public Dictionary<string, Dictionary<string, string>> List = new();
+        public Dictionary<string, Dictionary<string, string>> List { get; set; } = new();
     }
 
     public class BanList
@@ -71,7 +71,8 @@ namespace BetterServer
                     };
 
                     _list.List[unique] = @struct;
-                    File.WriteAllText("Config/Banlist.json", JsonSerializer.Serialize(_list));
+                    var ball = JsonSerializer.Serialize(_list);
+                    File.WriteAllText("Config/Banlist.json", ball);
                     return true;
                 }
             }

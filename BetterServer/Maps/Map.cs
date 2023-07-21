@@ -30,7 +30,7 @@ namespace BetterServer.Maps
             _ringCoff = GetRingTime();
             lock (server.Peers)
             {
-                if (server.Peers.Count > 3)
+                if (server.Peers.Count(e => !e.Value.Waiting) > 3)
                     _ringCoff--;
             }
 
@@ -443,7 +443,7 @@ namespace BetterServer.Maps
         protected virtual int GetPlayerOffset(Server server)
         {
             lock (server.Peers)
-                return (server.Peers.Count - 1) * 20;
+                return (server.Peers.Count(e => !e.Value.Waiting) - 1) * 20;
         }
 
         protected virtual float GetRingTime() => 5.0f;

@@ -394,7 +394,6 @@ namespace BetterServer.State
                         server.TCPSend(server.GetSession(peer.ID), pak);
 
                         peer.Waiting = false;
-                        Program.Window.AddPlayer(peer);
                     }
                     else
                     {

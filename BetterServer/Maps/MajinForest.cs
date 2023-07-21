@@ -20,7 +20,7 @@ namespace BetterServer.Maps
         protected override int GetPlayerOffset(Server server)
         {
             lock (server.Peers)
-                return (server.Peers.Count - 1) * 10;
+                return (server.Peers.Count(e => !e.Value.Waiting) - 1) * 10;
         }
 
         protected override int GetRingSpawnCount()

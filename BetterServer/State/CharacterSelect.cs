@@ -30,7 +30,7 @@ namespace BetterServer.State
         {
             lock (server.Peers)
             {
-                if (server.Peers.Count <= 1 || _exe == peer)
+                if (server.Peers.Count(e => !e.Value.Waiting) <= 1 || _exe == peer)
                 {
                     server.SetState<Lobby>();
                     return;
@@ -192,7 +192,7 @@ namespace BetterServer.State
         {
             lock (server.Peers)
             {
-                if (server.Peers.Count <= 1 && _map is not FartZone)
+                if (server.Peers.Count(e => !e.Value.Waiting) <= 1 && _map is not FartZone)
                     server.SetState<Lobby>();
 
                 var ind = 0;

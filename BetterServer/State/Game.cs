@@ -53,25 +53,9 @@ namespace BetterServer.State
                 if (peer.Player.RevivalTimes >= 2)
                     _demonCount--;
 
-                if (!server.Peers.Any(e => !e.Value.Waiting && e.Value.Player.IsAlive && e.Value.Player.Character != Character.Exe && e.Value.Player.RevivalTimes < 2 && !e.Value.Player.HasEscaped))
-                {
-                    EndGame(server, 0);
-                    return;
-                }
+                CheckEscapedAndAlive(server);
 
-                if (!server.Peers.Any(e => (!e.Value.Waiting && !e.Value.Player.HasEscaped && e.Value.Player.Character != Character.Exe)))
-                {
-                    EndGame(server, 1);
-                    return;
-                }
-
-                if (_exeId == peer.ID)
-                {
-                    EndGame(server, 1);
-                    return;
-                }
-
-                if (server.Peers.Count <= 1)
+                if (server.Peers.Count(e => !e.Value.Waiting) <= 1)
                     server.SetState<Lobby>();
             }
 
@@ -414,7 +398,7 @@ namespace BetterServer.State
                                 {
                                     var pkt = new TcpPacket(PacketType.SERVER_GAME_DEATHTIMER_END);
 
-                                    if (_demonCount >= (int)((server.Peers.Count - 1) / 2.0))
+                                    if (_demonCount >= (int)((server.Peers.Count(e => !e.Value.Waiting) - 1) / 2.0))
                                         pkt.Write(0);
                                     else
                                     {
@@ -438,7 +422,7 @@ namespace BetterServer.State
                             else
                                 peer.Player.DeadTimer = -1;
 
-                            CheckEscapedAndAlive(server, peer);
+                            CheckEscapedAndAlive(server);
                         }
                         break;
                     }
@@ -460,7 +444,7 @@ namespace BetterServer.State
                             pk.Write(peer.ID);
 
                             server.TCPMulticast(pk);
-                            CheckEscapedAndAlive(server, peer);
+                            CheckEscapedAndAlive(server);
 
                             Terminal.LogDiscord($"{peer.Nickname} has escaped!");
                         }
@@ -545,7 +529,7 @@ namespace BetterServer.State
                     {
                         var pkt = new TcpPacket(PacketType.SERVER_GAME_DEATHTIMER_END);
 
-                        if (_demonCount >= (int)((server.Peers.Count - 1) / 2.0))
+                        if (_demonCount >= (int)((server.Peers.Count(e => !e.Value.Waiting) - 1) / 2.0))
                             pkt.Write(0);
                         else
                         {
@@ -563,14 +547,14 @@ namespace BetterServer.State
             }
         }
 
-        private void CheckEscapedAndAlive(Server server, Peer peer)
+        private void CheckEscapedAndAlive(Server server)
         {
             lock (server.Peers)
             {
                 if (_endTimer >= 0)
                     return;
 
-                if (server.Peers.Count <= 0)
+                if (server.Peers.Count(e => !e.Value.Waiting) <= 0)
                 {
                     server.SetState<Lobby>();
                     return;
@@ -607,7 +591,7 @@ namespace BetterServer.State
                     return;
                 }
 
-                if ((server.Peers.Count - alive) + escaped >= server.Peers.Count)
+                if ((server.Peers.Count(e => !e.Value.Waiting) - alive) + escaped >= server.Peers.Count(e => !e.Value.Waiting))
                 {
                     if (escaped == 0)
                         EndGame(server, 0);

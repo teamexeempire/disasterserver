@@ -77,6 +77,11 @@ namespace BetterServer.Session
                     return;
 
                 Program.Window.RemovePlayer(peer);
+                if (peer.Waiting)
+                {
+                    Terminal.Log($"{peer?.EndPoint} (waiting) (ID {peer?.ID}) disconnected.");
+                    return;
+                }
 
                 var packet = new TcpPacket(PacketType.SERVER_PLAYER_LEFT, peer.ID);
                 _server.TCPMulticast(packet, ID);

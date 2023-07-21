@@ -222,7 +222,6 @@ namespace BetterServer.Session
                         }
                         else
                         {
-
                             var peer = Peers[id];
                             Terminal.LogDiscord($"{peer.Nickname} (ID {peer.ID}) disconnect: {reason}");
                         }

@@ -7,7 +7,7 @@ namespace BetterServer
 {
     public class Program
     {
-        public const int BUILD_VER = 3293;
+        public const int BUILD_VER = 330;
         public const int MAX_PLAYERS = 7;
         public static List<Server> Servers { get; private set; } = new();
         public static Window Window { get; private set; }
