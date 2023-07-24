@@ -200,7 +200,7 @@ namespace BetterServer.Session
 
         public void DisconnectWithReason(TcpSession? session, string reason)
         {
-            ThreadPool.QueueUserWorkItem((eb) =>
+            Task.Run(() =>
             {
                 if (session == null)
                     return;
@@ -208,6 +208,7 @@ namespace BetterServer.Session
                 if (!session.IsRunning)
                     return;
 
+                Terminal.LogDebug($"Disconnecting cuz following balls ({session.ID}): {reason}");
                 Thread.CurrentThread.Name = $"Server {UID}";
                 try
                 {

@@ -27,7 +27,7 @@ namespace BetterServer.Session
         protected override void OnSocketError(IPEndPoint endpoint, SocketError error)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
-            Terminal.LogDiscord($"Caught Error: {error}");
+            Terminal.LogDiscord($"Caught SocketError: {error}");
 
             _server.State.UDPSocketError(endpoint, error);
 

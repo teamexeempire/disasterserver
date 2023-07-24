@@ -73,6 +73,9 @@ namespace BetterServer
             
             lock (server.Peers)
             {
+                if(server.Peers.Count >= 7)
+                    return;
+                    
                 if (server.Peers.ContainsKey(session.ID))
                 {
                     server.Peers[session.ID].Pending = false;

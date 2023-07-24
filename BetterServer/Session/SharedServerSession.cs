@@ -71,11 +71,13 @@ namespace BetterServer.Session
 
             lock (_server.Peers)
             {
+                Terminal.LogDebug($"Disconnect Stage 1");
                 _server.Peers.Remove(ID, out Peer? peer);
 
                 if (peer == null)
                     return;
 
+                Terminal.LogDebug($"Disconnect Stage 2");
                 Program.Window.RemovePlayer(peer);
                 if (peer.Waiting)
                 {
@@ -83,9 +85,11 @@ namespace BetterServer.Session
                     return;
                 }
 
+                Terminal.LogDebug($"Disconnect Stage 3");
                 var packet = new TcpPacket(PacketType.SERVER_PLAYER_LEFT, peer.ID);
                 _server.TCPMulticast(packet, ID);
 
+                Terminal.LogDebug($"Disconnect Stage 4");
                 _server.State.PeerLeft(_server, this, peer);
                 Terminal.Log($"{peer?.EndPoint} (ID {peer?.ID}) disconnected.");
             }
@@ -171,6 +175,8 @@ namespace BetterServer.Session
         protected override void OnSocketError(SocketError error)
         {
             Thread.CurrentThread.Name = $"Server {_server.UID}";
+            Terminal.LogDiscord($"Caught SocketError: {error}");
+
             _server.State.TCPSocketError(this, error);
 
             base.OnSocketError(error);

@@ -47,7 +47,7 @@ namespace ExeNet
             Server = server;
             Client = client;
             ID = server.RequestID();
-
+            
             // Client setup
             Client.SendTimeout = 3000;
             Client.ReceiveTimeout = 2000;
@@ -84,38 +84,46 @@ namespace ExeNet
 
         private void CleanUp()
         {
-            Console.WriteLine("[TcpSession.cs] CleanUp()");
-
-            if (!IsRunning)
-                return;
-
-            IsRunning = false;
-
-            if (Client.Connected)
+            try
             {
-                Client.GetStream().Close();
-                Client.Close();
+                Console.WriteLine("[TcpSession.cs] CleanUp()");
+
+                if (!IsRunning)
+                    return;
+
+                IsRunning = false;
+
+                if (Client.Connected)
+                    Client.Close();
+
+                Console.WriteLine("[TcpSession.cs] Client is closed");
+
+                OnDisconnected();
+
+                lock (Server.Sessions)
+                {
+                    if (Server.Sessions.Contains(this))
+                        Server.Sessions.Remove(this);
+                }
+
+                Console.WriteLine("[TcpSession.cs] Disconnect called and removed from the list.");
             }
-
-            Console.WriteLine("[TcpSession.cs] Client is closed");
-
-            OnDisconnected();
-
-            lock (Server.Sessions)
+            catch(ObjectDisposedException)
             {
-                if (Server.Sessions.Contains(this))
-                    Server.Sessions.Remove(this);
+                Console.WriteLine("[TcpSession.cs] already disposed");
             }
-
-            Console.WriteLine("[TcpSession.cs] Disconnect called and removed from the list.");
         }
 
         private void DoSend(IAsyncResult result)
         {
             try
             {
+                if(!IsRunning)
+                    return;
+
                 int length = Client.Client.EndSend(result, out SocketError code);
 
+                Console.WriteLine($"[TcpSession.cs] DoSend() SocketError Code: {code}");
                 switch (code)
                 {
                     // Ignore
@@ -138,7 +146,6 @@ namespace ExeNet
                         }
 
                         OnSocketError(code);
-                        CleanUp();
                         break;
 
                     case SocketError.Success:
@@ -160,20 +167,15 @@ namespace ExeNet
         {
             try
             {
-                if (Client == null)
-                    return;
-
-                if (!Client.Connected)
-                {
-                    CleanUp();
-                    return;
-                }
-
                 if (!IsRunning)
                     return;
 
-                int length = Client.Client.EndReceive(result, out SocketError code);
+                if (Client == null)
+                    return;
 
+                int length = Client.Client.EndReceive(result, out SocketError code);
+                
+                Console.WriteLine($"[TcpSession.cs] DoReceive() SocketError Code: {code}");
                 switch (code)
                 {
                     // Ignore
@@ -215,6 +217,9 @@ namespace ExeNet
                 OnError(e.Message);
             }
 
+            if (!IsRunning)
+                return;
+
             try
             {
                 Client.Client.BeginReceive(_readBuffer, 0, _readBuffer.Length, SocketFlags.None, new AsyncCallback(DoReceive), null);
@@ -237,6 +242,7 @@ namespace ExeNet
         {
             Console.WriteLine($"[TcpSession.cs] CleanUp call from Dispose ({IsRunning})");
             CleanUp();
+            Client.Dispose();
         }
     }
 }
