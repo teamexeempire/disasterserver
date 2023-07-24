@@ -1,0 +1,1 @@
+/usr/bin/c++   -pthread   CMakeFiles/BetterServerGUI.dir/BetterServerGUI_autogen/mocs_compilation.cpp.o CMakeFiles/BetterServerGUI.dir/main.cpp.o CMakeFiles/BetterServerGUI.dir/mainwindow.cpp.o  -o BetterServerGUI  /usr/lib/x86_64-linux-gnu/libQt5Widgets.so.5.12.8 /usr/lib/x86_64-linux-gnu/libQt5Gui.so.5.12.8 /usr/lib/x86_64-linux-gnu/libQt5Core.so.5.12.8 

@@ -1,0 +1,6 @@
+/home/hander/disasterserver/BetterServerGUI/build/CMakeFiles/rebuild_cache.dir
+/home/hander/disasterserver/BetterServerGUI/build/CMakeFiles/edit_cache.dir
+/home/hander/disasterserver/BetterServerGUI/build/CMakeFiles/BetterServerGUI.dir
+/home/hander/disasterserver/BetterServerGUI/build/CMakeFiles/ServerGUI.dir
+/home/hander/disasterserver/BetterServerGUI/build/CMakeFiles/BetterServerGUI_autogen.dir
+/home/hander/disasterserver/BetterServerGUI/build/CMakeFiles/ServerGUI_autogen.dir

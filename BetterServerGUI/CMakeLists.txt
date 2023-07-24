@@ -49,3 +49,8 @@ set_target_properties(ServerGUI PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+
+if(unix)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+	message(${CMAKE_CXX_FLAGS})
+endif()

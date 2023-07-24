@@ -1,0 +1,3 @@
+# Hashes of file build rules.
+7967e79ac752bb077434d816ccd671da CMakeFiles/BetterServerGUI_autogen
+ef19e309fc91ddf6074e82b19ef091eb CMakeFiles/ServerGUI_autogen

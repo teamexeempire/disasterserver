@@ -237,9 +237,6 @@
                <property name="toolTip">
                 <string>Select map list preset</string>
                </property>
-               <property name="placeholderText">
-                <string>Select preset...</string>
-               </property>
                <property name="modelColumn">
                 <number>0</number>
                </property>
