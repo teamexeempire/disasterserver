@@ -19,7 +19,7 @@ namespace BetterServer.Entities
 
         public override TcpPacket? Spawn(Server server, Game game, Map map)
         {
-            FindPost(server);
+            FindSpot(server);
             return new TcpPacket(PacketType.SERVER_DTTAILSDOLL_STATE, (byte)0, (ushort)X, (ushort)Y, (_target == -1 && _timer <= 0));
         }
 
@@ -46,6 +46,9 @@ namespace BetterServer.Entities
                             continue;
 
                         if (player.Waiting)
+                            continue;
+
+                        if(player.Player.HasEscaped)
                             continue;
 
                         double dist = Ext.Dist(player.Player.X, player.Player.Y, X, Y);
@@ -83,7 +86,21 @@ namespace BetterServer.Entities
                         }
                     }
 
+                    if(!server.Peers.ContainsKey((ushort)_target))
+                    {
+                        FindSpot(server);
+                        _target = -1;
+                        goto balls;
+                    }
+
                     var plr = server.Peers[(ushort)_target].Player;
+
+                    if(plr.HasEscaped)
+                    {
+                        FindSpot(server);
+                        _target = -1;
+                        goto balls;
+                    }
                     
                     if ((int)Math.Abs(plr.X - X) >= 4)
                         X += Math.Sign((int)plr.X - X) * 4;
@@ -94,13 +111,13 @@ namespace BetterServer.Entities
                     if (Ext.Dist(plr.X, plr.Y, X, Y) < 18)
                     {
                         server.TCPSend(server.GetSession((ushort)_target), new TcpPacket(PacketType.SERVER_DTTAILSDOLL_STATE, (byte)1));
-                        FindPost(server);
+                        FindSpot(server);
 
                         _target = -1;
                     }
                 }
             }
-
+balls:
             byte state = 0;
 
             if (_target == -1)
@@ -115,7 +132,7 @@ namespace BetterServer.Entities
             return new UdpPacket(PacketType.SERVER_DTTAILSDOLL_STATE, (ushort)X, (ushort)Y, (byte)state);
         }
 
-        private void FindPost(Server server)
+        private void FindSpot(Server server)
         {
             Vector2[] pos = new Vector2[]
             {
