@@ -22,8 +22,7 @@ namespace BetterServer
                     Directory.CreateDirectory("Logs");
 
                 _fname = $"Logs/{DateTime.Now:yyyyMMddTHHmmss}.log";
-                AppDomain currentDomain = default(AppDomain);
-                currentDomain = AppDomain.CurrentDomain;
+                AppDomain currentDomain = AppDomain.CurrentDomain;
                 currentDomain.UnhandledException += CurrentDomain_UnhandledException;
                 currentDomain.ProcessExit += CurrentDomain_ProcessExit;
             }
