@@ -69,7 +69,6 @@ namespace BetterServer.State
             HandlePlayers(server, session, reader);
 
             Terminal.LogDebug("HandleMap()");
-            reader.BaseStream.Seek(0, SeekOrigin.Begin);
             _map.PeerTCPMessage(server, session, reader);
         }
 

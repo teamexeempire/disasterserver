@@ -73,19 +73,7 @@ namespace ExeNet
             }
         }
 
-        public TcpSession? GetSession(ushort id)
-        {
-            lock(Sessions)
-            {
-                foreach(var session in Sessions)
-                {
-                    if(session.ID == id)
-                        return session;
-                }
-            }
-
-            return null;
-        }
+        public TcpSession? GetSession(ushort id) => Sessions.Where(e => e.ID == id).FirstOrDefault();
 
         public void Dispose()
         {
