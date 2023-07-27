@@ -19,27 +19,33 @@ namespace BetterServer.Session
         
         public void MulticastInformation()
         {
-            byte[] arr = new byte[64];
-            arr[0] = (byte)Program.Servers.Count;
-            arr[1] = 7;
-
-            int ind = 2;
-            foreach (var server in Program.Servers)
+            try
             {
-                lock (server.Peers)
-                {
-                    byte state = (byte)server.State.AsState();
-                    byte players = (byte)server.Peers.Count;
+                byte[] arr = new byte[64];
+                arr[0] = (byte)Program.Servers.Count;
+                arr[1] = 7;
 
-                    arr[ind++] = state;
-                    arr[ind++] = players;
+                int ind = 2;
+                foreach (var server in Program.Servers)
+                {
+                    lock (server.Peers)
+                    {
+                        byte state = (byte)server.State.AsState();
+                        byte players = (byte)server.Peers.Count;
+
+                        arr[ind++] = state;
+                        arr[ind++] = players;
+                    }
+                }
+
+                lock (Sessions)
+                {
+                    foreach (var session in Sessions)
+                        session.Send(arr);
                 }
             }
-
-            lock (Sessions)
+            catch
             {
-                foreach (var session in Sessions)
-                    session.Send(arr);
             }
         }
 
