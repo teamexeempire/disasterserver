@@ -1,3 +1,10 @@
-\Version /100~
+\Version /110~
 
-- public release
+-new stable net code 
+-public servers for 5 regions
+-new host panel with more options 
+-2 new maps
+-idle and balancing animations 
+-better waiting screen 
+-round summary 
+-several balance changes
